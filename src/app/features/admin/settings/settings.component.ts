@@ -132,6 +132,12 @@ export class SettingsComponent {
       description: 'สร้าง Webhook สำหรับยิงเข้าแชนแนล',
       icon: 'M4 12a8 8 0 018-8v3m0 10v3a8 8 0 01-8-8zm16 0a8 8 0 01-8 8v-3m0-10V4a8 8 0 018 8z',
     },
+    {
+      path: 'feature-flags',
+      label: 'Feature Flags',
+      description: 'เปิด/ปิดหน้าการใช้งานจาก Backend',
+      icon: 'M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z',
+    },
   ];
 
   filteredItems = computed(() => {
@@ -149,12 +155,14 @@ export class SettingsComponent {
     const people = items.filter((i) => i.path === 'users' || i.path === 'teams');
     const channels = items.filter((i) => i.path === 'channels');
     const integrations = items.filter((i) => i.path === 'webhooks');
+    const system = items.filter((i) => i.path === 'feature-flags');
 
     const groups: Array<{ label: string; items: typeof items }> = [];
     if (dashboard.length) groups.push({ label: 'ทั่วไป', items: dashboard });
     if (people.length) groups.push({ label: 'ผู้ใช้และทีม', items: people });
     if (channels.length) groups.push({ label: 'แชนแนล', items: channels });
     if (integrations.length) groups.push({ label: 'การเชื่อมต่อ', items: integrations });
+    if (system.length) groups.push({ label: 'ระบบ', items: system });
     return groups;
   });
 }

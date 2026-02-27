@@ -9,6 +9,13 @@ import { SwalService } from '../../../shared/swal/swal.service';
 type Channel = {
   id: number;
   name: string;
+  channel_type?: string | null;
+  official_parent_id?: number | null;
+  official_parent?: {
+    name?: string | null;
+    icon_codepoint?: number | null;
+    icon_color?: string | null;
+  } | null;
   icon_codepoint: number | null;
   icon_color: string | null;
   is_active: boolean;
@@ -16,9 +23,9 @@ type Channel = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  Users: {
-    display_name: string;
-  }
+  Users?: {
+    display_name?: string | null;
+  } | null;
   channel_role_visibility?: Array<{
     channel_id: number;
     roles: { id: string; name: string };
@@ -42,6 +49,7 @@ export class Channels {
   loading = signal(false);
   query = signal('');
   statusFilter = signal<'all' | 'active' | 'inactive'>('all');
+  channelScope = signal<'general' | 'official'>('general');
   showCreateModal = signal(false);
   showRolesModal = signal(false);
   showEditModal = signal(false);
@@ -145,10 +153,22 @@ export class Channels {
     }
   }
 
+  get generalChannels() {
+    return this.applyStatusAndQuery((this.channels() || []).filter((c) => !this.isOfficialDirect(c)));
+  }
+
+  get officialChannels() {
+    return this.applyStatusAndQuery((this.channels() || []).filter((c) => this.isOfficialDirect(c)));
+  }
+
   get filteredChannels() {
+    return this.channelScope() === 'official' ? this.officialChannels : this.generalChannels;
+  }
+
+  private applyStatusAndQuery(channels: Channel[]) {
     const q = this.query().trim().toLowerCase();
     const filter = this.statusFilter();
-    return (this.channels() || [])
+    return channels
       .filter((c) => {
         if (filter === 'active' && !c.is_active) return false;
         if (filter === 'inactive' && c.is_active) return false;
@@ -221,6 +241,11 @@ export class Channels {
     if (next === this.statusFilter()) return;
     this.statusFilter.set(next);
     await this.fetchChannels();
+  }
+
+  setChannelScope(value: string) {
+    const next = value === 'official' ? 'official' : 'general';
+    this.channelScope.set(next);
   }
 
   async confirmDelete(channel: Channel) {
@@ -346,6 +371,12 @@ export class Channels {
       this.rolesSaving.set(false);
       this.loadingService.hide();
     }
+  }
+
+  isOfficialDirect(channel: { channel_type?: string | null; official_parent_id?: number | null }) {
+    const type = (channel.channel_type || '').toLowerCase();
+    const parentId = typeof channel.official_parent_id === 'number' ? channel.official_parent_id : null;
+    return type === 'direct' && !!parentId;
   }
 
 }

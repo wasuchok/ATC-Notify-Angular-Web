@@ -21,6 +21,34 @@
 
     <!-- Filters -->
     <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ประเภทห้อง</label>
+            <div
+                class="inline-flex w-full sm:w-auto items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+                <button type="button" (click)="setChannelScope('general')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    [class.bg-white]="channelScope() === 'general'" [class.text-slate-900]="channelScope() === 'general'"
+                    [class.text-slate-600]="channelScope() !== 'general'">
+                    แชนแนลทั่วไป
+                    <span class="px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-600">
+                        {{ generalChannels.length }}
+                    </span>
+                </button>
+
+                <button type="button" (click)="setChannelScope('official')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    [class.bg-white]="channelScope() === 'official'"
+                    [class.text-slate-900]="channelScope() === 'official'"
+                    [class.text-slate-600]="channelScope() !== 'official'">
+                    ห้อง OA
+                    <span class="px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-600">
+                        {{ officialChannels.length }}
+                    </span>
+                </button>
+            </div>
+            <p class="mt-1 text-[11px] text-slate-500">แยกรายการแชนแนลทั่วไปและห้อง OA ออกจากกัน</p>
+        </div>
+
         <div class="grid gap-3 sm:grid-cols-3">
             <div class="sm:col-span-2">
                 <label class="block text-xs font-semibold text-slate-700 mb-1">ค้นหา</label>
@@ -33,7 +61,7 @@
                         </svg>
                     </span>
                     <input [ngModel]="query()" (ngModelChange)="query.set($event)" type="text"
-                        placeholder="ค้นหาจากชื่อแชนแนล"
+                        [placeholder]="channelScope() === 'official' ? 'ค้นหาจากชื่อห้อง OA' : 'ค้นหาจากชื่อแชนแนล'"
                         class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1b3c5d] focus:ring-4 focus:ring-[#1b3c5d]/10 outline-none transition-all text-sm" />
                 </div>
             </div>
@@ -54,7 +82,9 @@
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <p class="text-sm font-bold text-slate-900">รายการแชนแนล</p>
+                <p class="text-sm font-bold text-slate-900">
+                    {{ channelScope() === 'official' ? 'รายการห้อง OA' : 'รายการแชนแนลทั่วไป' }}
+                </p>
                 <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                     {{ filteredChannels.length }} รายการ
                 </span>
@@ -72,8 +102,12 @@
                         d="M21 15a4 4 0 01-4 4H7l-4 3V7a4 4 0 014-4h10a4 4 0 014 4v8z" />
                 </svg>
             </div>
-            <p class="mt-3 text-sm font-semibold text-slate-800">ยังไม่มีแชนแนล</p>
-            <p class="text-xs text-slate-500">กด “สร้างแชนแนล” เพื่อเพิ่มห้องแชทใหม่</p>
+            <p class="mt-3 text-sm font-semibold text-slate-800">
+                {{ channelScope() === 'official' ? 'ยังไม่มีห้อง OA' : 'ยังไม่มีแชนแนล' }}
+            </p>
+            <p class="text-xs text-slate-500">
+                {{ channelScope() === 'official' ? 'ยังไม่พบห้อง OA ตามตัวกรองที่เลือก' : 'กด “สร้างแชนแนล” เพื่อเพิ่มห้องแชทใหม่' }}
+            </p>
         </div>
         } @else {
         <div class="overflow-x-auto">
@@ -111,6 +145,12 @@
                                             Default
                                         </span>
                                         }
+                                        @if (isOfficialDirect(c)) {
+                                        <span
+                                            class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
+                                            OA
+                                        </span>
+                                        }
                                         @if (!c.is_active) {
                                         <span
                                             class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
@@ -122,7 +162,7 @@
                                     <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
 
                                         <span class="hidden sm:inline">•</span>
-                                        <span class="hidden sm:inline">created_by: {{ c.Users.display_name }}</span>
+                                        <span class="hidden sm:inline">created_by: {{ c.Users?.display_name || '-' }}</span>
                                     </div>
                                 </div>
                             </div>

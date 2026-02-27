@@ -19,7 +19,7 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
           <div class="text-slate-500 font-medium">กำลังโหลดห้องแชท...</div>
         </div>
 
-        <div *ngIf="!channelsService.loading() && channelsService.channels().length === 0"
+        <div *ngIf="!channelsService.loading() && generalChannels().length === 0"
           class="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500">
           <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
             <span class="text-3xl">🗂️</span>
@@ -28,7 +28,7 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
           <p class="text-xs text-slate-400">สร้างห้องใหม่หรือมอบหมายบทบาทเพื่อเริ่มต้น</p>
         </div>
 
-        <ng-container *ngIf="!channelsService.loading() && channelsService.channels().length > 0">
+        <ng-container *ngIf="!channelsService.loading() && generalChannels().length > 0">
           <section *ngIf="defaultChannels().length > 0" class="mb-6">
             <div class="mb-3 text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">Default Rooms</div>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,12 +98,16 @@ export class ChatIndexComponent implements OnInit {
     }
   }
 
+  generalChannels() {
+    return (this.channelsService.channels() || []).filter((c) => !this.isOfficialDirect(c));
+  }
+
   defaultChannels() {
-    return (this.channelsService.channels() || []).filter((c) => c.is_default === true);
+    return this.generalChannels().filter((c) => c.is_default === true);
   }
 
   roleChannels() {
-    return (this.channelsService.channels() || []).filter((c) => c.is_default !== true);
+    return this.generalChannels().filter((c) => c.is_default !== true);
   }
 
   normalizeColor(value: string | null | undefined) {
@@ -127,5 +131,11 @@ export class ChatIndexComponent implements OnInit {
     } catch {
       return '';
     }
+  }
+
+  private isOfficialDirect(channel: { channel_type?: string | null; official_parent_id?: number | null }) {
+    const type = (channel.channel_type || '').toLowerCase();
+    const parentId = typeof channel.official_parent_id === 'number' ? channel.official_parent_id : null;
+    return type === 'direct' && !!parentId;
   }
 }

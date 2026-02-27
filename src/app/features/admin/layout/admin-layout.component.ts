@@ -33,10 +33,34 @@ import { SwalService } from '../../../shared/swal/swal.service';
           </a>
         </div>
 
+        <div class="mt-3 px-2 space-y-2">
+          <a routerLink="/admin/chat"
+            routerLinkActive="bg-slate-800 border-slate-700"
+            [routerLinkActiveOptions]="{ exact: false }"
+            class="w-full h-11 rounded-2xl bg-slate-900 border border-transparent hover:bg-slate-800 hover:border-slate-700 transition-colors flex items-center justify-center"
+            title="แชท">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 10h8M8 14h5m-8 4h10l5 3V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </a>
+          <a routerLink="/admin/oa"
+            routerLinkActive="bg-slate-800 border-slate-700"
+            class="w-full h-11 rounded-2xl bg-slate-900 border border-transparent hover:bg-slate-800 hover:border-slate-700 transition-colors flex items-center justify-center"
+            title="OA">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </a>
+        </div>
+
         <div class="mt-3 flex-1 overflow-y-auto custom-scrollbar px-2 space-y-2">
 
 
-          <a *ngFor="let c of channelsService.channels()"
+          <a *ngFor="let c of generalChannels()"
             [routerLink]="['/admin/chat', c.id]"
             routerLinkActive="ring-2 ring-white/10 bg-slate-800"
             class="group w-full h-11 rounded-2xl border border-transparent hover:border-slate-700 hover:bg-slate-800 transition-all flex items-center justify-center relative"
@@ -177,6 +201,15 @@ export class AdminLayoutComponent {
     const confirmed = await this.swal.question('ออกจากระบบ', 'ต้องการออกจากระบบใช่หรือไม่?');
     if (!confirmed) return;
 
+    const refreshToken = this.tokenService.getRefreshToken();
+    if (refreshToken) {
+      try {
+        await firstValueFrom(this.api.postPublic('/auth/logout', { refreshToken }));
+      } catch {
+        // ignore logout API error and continue local sign out
+      }
+    }
+
     this.profileMenuOpen.set(false);
     this.realtime.disconnect();
     this.tokenService.clearTokens();
@@ -224,6 +257,13 @@ export class AdminLayoutComponent {
       return;
     }
 
+    if (url.startsWith('/admin/oa')) {
+      this.realtime.activeChannelId.set(null);
+      this.currentTitle.set('ห้อง OA');
+      this.currentSubtitle.set('รวมแชลแนล OA ที่มีห้องสนทนาแล้ว');
+      return;
+    }
+
     const chatMatch = url.match(/\/admin\/chat\/(\d+)/);
     if (chatMatch) {
       const id = Number(chatMatch[1]);
@@ -238,6 +278,10 @@ export class AdminLayoutComponent {
     this.realtime.activeChannelId.set(null);
     this.currentTitle.set('แชท');
     this.currentSubtitle.set('เลือกห้องแชทจากแถบซ้าย');
+  }
+
+  generalChannels() {
+    return (this.channelsService.channels() || []).filter((c) => !this.isOfficialDirect(c));
   }
 
   normalizeColor(value: string | null | undefined) {
@@ -261,5 +305,11 @@ export class AdminLayoutComponent {
     } catch {
       return '';
     }
+  }
+
+  private isOfficialDirect(channel: { channel_type?: string | null; official_parent_id?: number | null }) {
+    const type = (channel.channel_type || '').toLowerCase();
+    const parentId = typeof channel.official_parent_id === 'number' ? channel.official_parent_id : null;
+    return type === 'direct' && !!parentId;
   }
 }

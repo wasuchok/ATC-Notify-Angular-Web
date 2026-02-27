@@ -17,6 +17,10 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () => import('./chat/chat-index.component').then(m => m.ChatIndexComponent)
       },
       {
+        path: 'oa',
+        loadComponent: () => import('./official/official-group-list.component').then(m => m.OfficialGroupListComponent)
+      },
+      {
         path: 'chat/:id',
         loadComponent: () => import('./chat/chat-room.component').then(m => m.ChatRoomComponent)
       },
@@ -31,6 +35,7 @@ export const ADMIN_ROUTES: Routes = [
           { path: 'channels', loadComponent: () => import('./channels/channels').then(m => m.Channels) },
           { path: 'teams', loadComponent: () => import('./teams/teams').then(m => m.TeamsComponent) },
           { path: 'webhooks', loadComponent: () => import('./webhooks/webhook-management.component').then(m => m.WebhookManagementComponent) },
+          { path: 'feature-flags', loadComponent: () => import('./feature-flags/feature-flags.component').then(m => m.FeatureFlagsComponent) },
         ]
       },
       {
