@@ -36,6 +36,7 @@ export const ADMIN_ROUTES: Routes = [
           { path: 'teams', loadComponent: () => import('./teams/teams').then(m => m.TeamsComponent) },
           { path: 'webhooks', loadComponent: () => import('./webhooks/webhook-management.component').then(m => m.WebhookManagementComponent) },
           { path: 'feature-flags', loadComponent: () => import('./feature-flags/feature-flags.component').then(m => m.FeatureFlagsComponent) },
+          { path: 'developer-versions', loadComponent: () => import('./developer-versions/developer-versions.component').then(m => m.DeveloperVersionsComponent) },
         ]
       },
       {

@@ -138,6 +138,12 @@ export class SettingsComponent {
       description: 'เปิด/ปิดหน้าการใช้งานจาก Backend',
       icon: 'M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z',
     },
+    {
+      path: 'developer-versions',
+      label: 'เวอร์ชั่นนักพัฒนา',
+      description: 'Angular และแพ็กเกจเวอร์ชั่น',
+      icon: 'M9.75 3v2.25m4.5-2.25v2.25M3 9.75h18M4.5 6.75h15A1.5 1.5 0 0121 8.25v10.5A1.5 1.5 0 0119.5 20.25h-15A1.5 1.5 0 013 18.75V8.25a1.5 1.5 0 011.5-1.5zm3 6h9m-9 3h5.25',
+    },
   ];
 
   filteredItems = computed(() => {
@@ -155,7 +161,9 @@ export class SettingsComponent {
     const people = items.filter((i) => i.path === 'users' || i.path === 'teams');
     const channels = items.filter((i) => i.path === 'channels');
     const integrations = items.filter((i) => i.path === 'webhooks');
-    const system = items.filter((i) => i.path === 'feature-flags');
+    const system = items.filter(
+      (i) => i.path === 'feature-flags' || i.path === 'developer-versions'
+    );
 
     const groups: Array<{ label: string; items: typeof items }> = [];
     if (dashboard.length) groups.push({ label: 'ทั่วไป', items: dashboard });

@@ -91,6 +91,9 @@ type WebhookDetail = {
               คัดลอกคำสั่ง
             </button>
           </div>
+          <p class="text-[11px] text-emerald-800">
+            หมายเหตุ: แนะนำให้ส่ง <code class="font-mono">sender_uuid</code> ใน body ทุกครั้ง
+          </p>
         </div>
       }
 
@@ -273,6 +276,10 @@ type WebhookDetail = {
                   คัดลอกคำสั่ง
                 </button>
               </div>
+              <p class="text-[11px] text-slate-500">
+                หมายเหตุ: ตัวอย่างด้านบนใส่ <code class="font-mono">sender_uuid</code> เป็น
+                <code class="font-mono">{{ defaultSenderUuid }}</code>
+              </p>
             }
           </div>
         </div>
@@ -293,6 +300,7 @@ export class WebhookManagementComponent {
   detail = signal<WebhookDetail | null>(null);
 
   incomingUrl = `${API_BASE_URL}/webhooks/incoming`;
+  defaultSenderUuid = '3dbbfb77-2003-4ff3-b7e3-ed4714b5210d';
 
   canCreate = computed(() => {
     const channelId = this.selectedChannelId();
@@ -308,7 +316,7 @@ export class WebhookManagementComponent {
       `curl -X POST "${this.incomingUrl}" \\`,
       `  -H "Content-Type: application/json" \\`,
       `  -H "X-Webhook-Secret: ${secret}" \\`,
-      `  -d '{"channel_id": ${channelId}, "content": "Hello from webhook"}'`,
+      `  -d '{"channel_id": ${channelId}, "content": "Hello from webhook", "sender_uuid": "${this.defaultSenderUuid}"}'`,
     ].join('\n');
   });
 
@@ -320,7 +328,7 @@ export class WebhookManagementComponent {
       `curl -X POST "${this.incomingUrl}" \\`,
       `  -H "Content-Type: application/json" \\`,
       `  -H "X-Webhook-Secret: ${secret}" \\`,
-      `  -d '{"channel_id": ${channelId}, "content": "Hello from webhook"}'`,
+      `  -d '{"channel_id": ${channelId}, "content": "Hello from webhook", "sender_uuid": "${this.defaultSenderUuid}"}'`,
     ].join('\n');
   });
 
@@ -333,6 +341,7 @@ export class WebhookManagementComponent {
       `  -H "X-Webhook-Secret: ${secret}" \\`,
       `  -F "channel_id=${channelId}" \\`,
       `  -F "content=Image from webhook" \\`,
+      `  -F "sender_uuid=${this.defaultSenderUuid}" \\`,
       `  -F "image=@./image.png"`,
     ].join('\n');
   });

@@ -1,31 +1,8 @@
 {
   "name": "web-notify",
   "version": "1.0.0",
-  "scripts": {
-    "ng": "ng",
-    "sync:versions": "node scripts/sync-version-manifest.mjs",
-    "prestart": "npm run sync:versions",
-    "prebuild": "npm run sync:versions",
-    "prewatch": "npm run sync:versions",
-    "start": "ng serve --host 0.0.0.0 --port 3400",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
-  },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
-  },
-  "private": true,
   "packageManager": "npm@10.9.3",
+  "generatedAt": "2026-03-04T07:36:54.311Z",
   "dependencies": {
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
