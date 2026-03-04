@@ -7,7 +7,13 @@ import { ApiService } from '../../../core/services/api.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { SwalService } from '../../../shared/swal/swal.service';
 
-type Channel = { id: number; name: string; is_active: boolean };
+type Channel = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  channel_type?: string | null;
+  official_parent_id?: number | null;
+};
 type Webhook = { id: number; channel_id: number; name: string; created_at: string };
 type CreatedWebhook = Webhook & { secret_token: string };
 type WebhookDetail = {
@@ -351,10 +357,26 @@ export class WebhookManagementComponent {
               id: Number(c?.id),
               name: String(c?.name ?? ''),
               is_active: !!c?.is_active,
+              channel_type: typeof c?.channel_type === 'string' ? c.channel_type : null,
+              official_parent_id:
+                typeof c?.official_parent_id === 'number' ? c.official_parent_id : null,
             }))
-            .filter((c: Channel) => Number.isFinite(c.id) && !!c.name)
+            .filter((c: Channel) => {
+              if (!Number.isFinite(c.id) || !c.name) return false;
+              const type = String(c.channel_type ?? '').toLowerCase();
+              // Webhook หน้านี้รองรับเฉพาะห้องหลัก (general)
+              if (type && type !== 'general') return false;
+              return c.official_parent_id == null;
+            })
         : [];
       this.channels.set(channels);
+
+      const selectedId = this.selectedChannelId();
+      if (selectedId && !channels.some((c) => c.id === selectedId)) {
+        this.selectedChannelId.set(null);
+        this.webhooks.set([]);
+        this.created.set(null);
+      }
     } catch (err: any) {
       const message = err?.error?.message || 'ไม่สามารถดึงรายการแชนแนลได้';
       this.swal.error('แจ้งเตือน', message);

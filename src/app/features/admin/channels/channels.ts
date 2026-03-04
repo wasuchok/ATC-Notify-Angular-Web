@@ -3,8 +3,59 @@ import { Component, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { JoinedChannelsService } from '../../../core/services/joined-channels.service';
 import { LoadingService } from '../../../core/services/loading.service';
+import { TokenService } from '../../../core/services/token.service';
 import { SwalService } from '../../../shared/swal/swal.service';
+
+const CHANNEL_ICON_OPTIONS: number[] = [
+  0xf62f, // chat_bubble_outline_rounded
+  0xf0d9, // group_outlined
+  0xf237, // notifications_outlined
+  0xef27, // campaign_outlined
+  0xf0ee, // headset_mic_outlined
+  0xf1ae, // map_outlined
+  0xe5fd, // star_outline
+  0xf086, // flight_takeoff_outlined
+  0xf379, // shield_outlined
+  0xe37c, // lightbulb_outline
+  0xe6f4, // work_outline
+  0xf022, // engineering_outlined
+  0xf34c, // security_outlined
+  0xf0653, // rocket_launch_outlined
+  0xe621, // support_agent
+  0xf1be, // medical_services_outlined
+  0xf4ae, // warning_amber_outlined
+  0xf4d0, // wifi_tethering_outlined
+  0xf0681, // tips_and_updates_outlined
+  0xf2ef, // receipt_long_outlined
+  0xef11, // calendar_today_outlined
+  0xf0df, // handyman_outlined
+  0xef6f, // commute_outlined
+  0xf134, // inventory_2_outlined
+  0xf0693, // warehouse_outlined
+  0xf05f7, // factory_outlined
+  0xf2e4, // radar_outlined
+  0xf35a, // sensors_outlined
+  0xe03a, // access_time
+  0xf2ac, // place_outlined
+];
+
+const CHANNEL_COLOR_OPTIONS: string[] = [
+  'FF1E88E5',
+  'FF43A047',
+  'FFF4511E',
+  'FFFB8C00',
+  'FF8E24AA',
+  'FF3949AB',
+  'FF00ACC1',
+  'FF00897B',
+  'FF5D4037',
+  'FF546E7A',
+];
+
+const DEFAULT_ICON_CODEPOINT = CHANNEL_ICON_OPTIONS[0] ?? 0xe03a;
+const DEFAULT_ICON_COLOR = CHANNEL_COLOR_OPTIONS[0] ?? 'FF1E88E5';
 
 type Channel = {
   id: number;
@@ -50,6 +101,14 @@ export class Channels {
   query = signal('');
   statusFilter = signal<'all' | 'active' | 'inactive'>('all');
   channelScope = signal<'general' | 'official'>('general');
+  createType = signal<'general' | 'official'>('general');
+  createName = signal('');
+  createOfficialHandle = signal('');
+  createIconCodepoint = signal<number>(DEFAULT_ICON_CODEPOINT);
+  createIconColor = signal<string>(DEFAULT_ICON_COLOR);
+  creatingChannel = signal(false);
+  channelIconOptions = CHANNEL_ICON_OPTIONS;
+  channelColorOptions = CHANNEL_COLOR_OPTIONS;
   showCreateModal = signal(false);
   showRolesModal = signal(false);
   showEditModal = signal(false);
@@ -67,8 +126,10 @@ export class Channels {
 
   constructor(
     private readonly api: ApiService,
+    private readonly joinedChannels: JoinedChannelsService,
     private readonly loadingService: LoadingService,
-    private readonly swal: SwalService
+    private readonly swal: SwalService,
+    private readonly tokenService: TokenService
   ) {
     let previousOverflow = '';
     effect((onCleanup) => {
@@ -181,6 +242,7 @@ export class Channels {
 
 
   closeOverlays() {
+    this.showCreateModal.set(false);
     this.showRolesModal.set(false);
     this.showEditModal.set(false);
   }
@@ -233,6 +295,83 @@ export class Channels {
     });
   }
 
+  openCreateModal() {
+    this.createType.set('general');
+    this.createName.set('');
+    this.createOfficialHandle.set('');
+    this.createIconCodepoint.set(DEFAULT_ICON_CODEPOINT);
+    this.createIconColor.set(DEFAULT_ICON_COLOR);
+    this.showCreateModal.set(true);
+  }
+
+  async submitCreateChannel() {
+    if (this.creatingChannel()) return;
+
+    const name = this.createName().trim();
+    if (!name) {
+      await this.swal.warning('ต้องการชื่อแชนแนล', 'กรุณากรอกชื่อแชนแนลก่อนสร้าง');
+      return;
+    }
+
+    const type = this.createType();
+    const isOfficial = type === 'official';
+    const officialHandle = this.createOfficialHandle().trim();
+
+    if (isOfficial && !officialHandle) {
+      await this.swal.warning('ต้องการ handle', 'กรุณากรอก handle ของ OA เช่น @atc123');
+      return;
+    }
+
+    const payload = this.tokenService.getAccessTokenPayload();
+    const createdBy = typeof payload?.sub === 'string' ? payload.sub : null;
+    const iconCodepoint = this.createIconCodepoint();
+    const iconColor = this.createIconColor();
+
+    this.creatingChannel.set(true);
+    this.loadingService.show();
+    try {
+      if (isOfficial) {
+        await firstValueFrom(
+          this.api.postPrivate(
+            '/channel/official',
+            {
+              name,
+              official_handle: officialHandle,
+              icon_codepoint: iconCodepoint,
+              icon_color: iconColor,
+            },
+            { withCredentials: true }
+          )
+        );
+      } else {
+        await firstValueFrom(
+          this.api.postPrivate(
+            '/channel/create',
+            {
+              name,
+              icon_codepoint: iconCodepoint,
+              icon_color: iconColor,
+              created_by: createdBy,
+            },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      this.showCreateModal.set(false);
+      this.channelScope.set('general');
+      await this.fetchChannels();
+      await this.syncSidebarChannels();
+      await this.swal.success('สำเร็จ', isOfficial ? 'สร้าง OA เรียบร้อยแล้ว' : 'สร้างแชนแนลเรียบร้อยแล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถสร้างแชนแนลได้';
+      await this.swal.error('ไม่สำเร็จ', message);
+    } finally {
+      this.creatingChannel.set(false);
+      this.loadingService.hide();
+    }
+  }
+
 
   async onStatusChange(value: string) {
     const next = (['all', 'active', 'inactive'] as const).includes(value as any)
@@ -248,6 +387,12 @@ export class Channels {
     this.channelScope.set(next);
   }
 
+  setCreateType(value: string) {
+    const next = value === 'official' ? 'official' : 'general';
+    this.createType.set(next);
+    if (next !== 'official') this.createOfficialHandle.set('');
+  }
+
   async confirmDelete(channel: Channel) {
     const ok = await this.swal.question('ยืนยันการลบ', `ต้องการลบแชนแนล "${channel.name}" ใช่หรือไม่?`);
     if (!ok) return;
@@ -256,6 +401,7 @@ export class Channels {
     try {
       await firstValueFrom(this.api.deletePrivate(`/channel/${channel.id}`));
       await this.fetchChannels();
+      await this.syncSidebarChannels();
       await this.swal.success('สำเร็จ', 'ลบแชนแนลเรียบร้อยแล้ว');
     } catch (err: any) {
       const message = err?.error?.message || 'ไม่สามารถลบแชนแนลได้';
@@ -291,6 +437,7 @@ export class Channels {
       );
       this.showEditModal.set(false);
       await this.fetchChannels();
+      await this.syncSidebarChannels();
       await this.swal.success('สำเร็จ', 'บันทึกข้อมูลแชนแนลเรียบร้อยแล้ว');
     } catch (err: any) {
       const message = err?.error?.message || 'ไม่สามารถแก้ไขแชนแนลได้';
@@ -377,6 +524,14 @@ export class Channels {
     const type = (channel.channel_type || '').toLowerCase();
     const parentId = typeof channel.official_parent_id === 'number' ? channel.official_parent_id : null;
     return type === 'direct' && !!parentId;
+  }
+
+  private async syncSidebarChannels() {
+    try {
+      await this.joinedChannels.refresh();
+    } catch {
+      // keep main operation success even if sidebar sync fails
+    }
   }
 
 }

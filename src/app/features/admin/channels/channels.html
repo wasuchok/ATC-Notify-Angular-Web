@@ -8,6 +8,14 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <button type="button" (click)="openCreateModal()"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1b3c5d] text-white hover:bg-[#173553] transition-colors text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                สร้างแชนแนล
+            </button>
             <button type="button" (click)="fetchChannels()"
                 class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
@@ -279,6 +287,132 @@
     </div>
 
 
+
+    <!-- Create Modal -->
+    @if (showCreateModal()) {
+    <div class="fixed inset-0 z-[3000]">
+        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" (click)="closeOverlays()"></div>
+
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-slate-900 truncate">สร้างแชนแนลใหม่</p>
+                        <p class="text-xs text-slate-500">ระบุประเภท, ชื่อ, ไอคอน และสีพื้นหลัง</p>
+                    </div>
+                    <button type="button" (click)="closeOverlays()" [disabled]="creatingChannel()"
+                        class="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4">
+                    <div class="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50/80">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center ring-1 ring-black/5"
+                                [style.background]="normalizeColor(createIconColor()) || '#1e88e5'">
+                                <span class="text-white text-xl leading-none channel-icon-glyph">
+                                    {{ iconGlyph(createIconCodepoint()) || '?' }}
+                                </span>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-900 truncate">
+                                    {{ createName().trim() || 'ตัวอย่างไอคอน' }}
+                                </p>
+                                <p class="text-xs text-slate-500">
+                                    {{ createType() === 'official' ? 'ประเภท OA' : 'แชนแนลทั่วไป' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">ประเภทแชนแนล</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" (click)="setCreateType('general')"
+                                class="px-3 py-2 rounded-xl border text-sm font-semibold transition-colors"
+                                [style.border-color]="createType() === 'general' ? '#1b3c5d' : '#e2e8f0'"
+                                [style.background]="createType() === 'general' ? 'rgba(27,60,93,0.08)' : '#ffffff'"
+                                [style.color]="createType() === 'general' ? '#1b3c5d' : '#334155'">
+                                แชนแนลทั่วไป
+                            </button>
+                            <button type="button" (click)="setCreateType('official')"
+                                class="px-3 py-2 rounded-xl border text-sm font-semibold transition-colors"
+                                [style.border-color]="createType() === 'official' ? '#1b3c5d' : '#e2e8f0'"
+                                [style.background]="createType() === 'official' ? 'rgba(27,60,93,0.08)' : '#ffffff'"
+                                [style.color]="createType() === 'official' ? '#1b3c5d' : '#334155'">
+                                OA
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อแชนแนล</label>
+                            <input [ngModel]="createName()" (ngModelChange)="createName.set($event)" type="text"
+                                placeholder="เช่น แจ้งเตือนซ่อม" (keydown.enter)="submitCreateChannel()"
+                                class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1b3c5d] focus:ring-4 focus:ring-[#1b3c5d]/10 outline-none transition-all text-sm" />
+                        </div>
+
+                        @if (createType() === 'official') {
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Handle OA</label>
+                            <input [ngModel]="createOfficialHandle()" (ngModelChange)="createOfficialHandle.set($event)"
+                                type="text" placeholder="@atc123" (keydown.enter)="submitCreateChannel()"
+                                class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#1b3c5d] focus:ring-4 focus:ring-[#1b3c5d]/10 outline-none transition-all text-sm" />
+                            <p class="mt-1 text-[11px] text-slate-500">รองรับตัวพิมพ์เล็ก, ตัวเลข, จุด, ขีดกลาง และ _</p>
+                        </div>
+                        }
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">เลือกไอคอน</label>
+                        <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70">
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" *ngFor="let codepoint of channelIconOptions"
+                                    (click)="createIconCodepoint.set(codepoint)"
+                                    class="w-11 h-11 rounded-xl border flex items-center justify-center transition-all"
+                                    [style.background]="createIconCodepoint() === codepoint ? '#e2e8f0' : '#ffffff'"
+                                    [style.border-color]="createIconCodepoint() === codepoint ? '#1b3c5d' : '#cbd5e1'">
+                                    <span class="text-lg leading-none channel-icon-glyph text-slate-700">
+                                        {{ iconGlyph(codepoint) || '?' }}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">เลือกสีพื้นหลัง</label>
+                        <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70">
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" *ngFor="let color of channelColorOptions"
+                                    (click)="createIconColor.set(color)" class="w-9 h-9 rounded-lg border"
+                                    [style.background]="normalizeColor(color) || '#1e88e5'"
+                                    [style.border-color]="createIconColor() === color ? '#0f172a' : '#cbd5e1'"
+                                    [style.border-width]="createIconColor() === color ? '2px' : '1px'"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-white">
+                    <button type="button" (click)="closeOverlays()" [disabled]="creatingChannel()"
+                        class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                        ยกเลิก
+                    </button>
+                    <button type="button" (click)="submitCreateChannel()" [disabled]="creatingChannel()"
+                        class="px-4 py-2 rounded-xl bg-[#1b3c5d] text-white hover:bg-[#173553] transition-colors text-sm disabled:opacity-70 disabled:cursor-not-allowed">
+                        {{ creatingChannel() ? 'กำลังสร้าง...' : 'สร้าง' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
 
     <!-- Edit Modal -->
     @if (showEditModal()) {
