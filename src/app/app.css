@@ -1,1 +1,103 @@
-/* component-scoped styles are not used for global font; kept empty */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(59, 130, 246, 0.18), transparent 34%),
+    radial-gradient(circle at 78% 82%, rgba(15, 23, 42, 0.12), transparent 36%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  animation: splash-fade-in 240ms ease-out;
+}
+
+.app-splash__card {
+  width: min(360px, 100%);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  border-radius: 1.5rem;
+  padding: 1.4rem 1.2rem 1.2rem;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.14);
+  text-align: center;
+}
+
+.app-splash__logo-wrap {
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 auto 0.8rem;
+  border-radius: 1.25rem;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 23, 42, 0.05));
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  animation: splash-float 1.8s ease-in-out infinite;
+}
+
+.app-splash__logo {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: contain;
+}
+
+.app-splash__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-splash__subtitle {
+  margin: 0.25rem 0 0.85rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.app-splash__bar {
+  width: 100%;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.app-splash__bar-fill {
+  display: block;
+  height: 100%;
+  width: 45%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #60a5fa, #2563eb);
+  animation: splash-progress 1s ease-in-out infinite;
+}
+
+@keyframes splash-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes splash-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes splash-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}

@@ -1,7 +1,14 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  Router,
+  RouterOutlet,
+} from '@angular/router';
 import { AlertCenterComponent } from './shared/alert/alert-center.component';
 import { SwalOverlayComponent } from './shared/swal/swal-overlay.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -10,4 +17,42 @@ import { SwalOverlayComponent } from './shared/swal/swal-overlay.component';
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App {}
+export class App implements OnInit, OnDestroy {
+  showSplash = signal(true);
+
+  private readonly splashMinDurationMs = 900;
+  private minDurationDone = false;
+  private firstRouteSettled = false;
+  private routerSub?: Subscription;
+  private minDurationTimer?: ReturnType<typeof setTimeout>;
+
+  constructor(private readonly router: Router) {}
+
+  ngOnInit() {
+    this.minDurationTimer = setTimeout(() => {
+      this.minDurationDone = true;
+      this.tryHideSplash();
+    }, this.splashMinDurationMs);
+
+    this.routerSub = this.router.events.subscribe((event) => {
+      if (
+        event instanceof NavigationEnd ||
+        event instanceof NavigationCancel ||
+        event instanceof NavigationError
+      ) {
+        this.firstRouteSettled = true;
+        this.tryHideSplash();
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.minDurationTimer) clearTimeout(this.minDurationTimer);
+    this.routerSub?.unsubscribe();
+  }
+
+  private tryHideSplash() {
+    if (!this.firstRouteSettled || !this.minDurationDone) return;
+    this.showSplash.set(false);
+  }
+}

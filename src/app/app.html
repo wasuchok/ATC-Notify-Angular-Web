@@ -1,3 +1,18 @@
 <router-outlet />
 <app-alert-center />
 <app-swal-overlay />
+
+@if (showSplash()) {
+  <div class="app-splash" aria-live="polite" aria-label="กำลังโหลดระบบ">
+    <div class="app-splash__card">
+      <div class="app-splash__logo-wrap">
+        <img src="assets/logo.png" alt="ATC Notify" class="app-splash__logo" />
+      </div>
+      <p class="app-splash__title">ATC Notify</p>
+      <p class="app-splash__subtitle">กำลังเตรียมระบบ...</p>
+      <div class="app-splash__bar">
+        <span class="app-splash__bar-fill"></span>
+      </div>
+    </div>
+  </div>
+}
