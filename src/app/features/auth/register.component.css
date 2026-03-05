@@ -1,12 +1,13 @@
 :host {
   display: block;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-.login-page {
-  min-height: 100vh;
+.register-page {
+  min-height: 100dvh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +50,7 @@
   background: rgba(251, 191, 36, 0.16);
 }
 
-.login-shell {
+.register-shell {
   position: relative;
   z-index: 1;
   width: min(1080px, 100%);
@@ -113,12 +114,49 @@
   padding: 2rem;
 }
 
+.register-form-wrap {
+  max-width: min(560px, 100%);
+}
+
 .field-label {
   display: block;
   margin-bottom: 0.3rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #334155;
+}
+
+.otp-helper {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.otp-inputs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.otp-input {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  border-radius: 0.75rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  padding: 0.62rem 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.otp-input:focus {
+  border-color: #1b3c5d;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(27, 60, 93, 0.12);
 }
 
 .field-input {
@@ -141,7 +179,7 @@
   box-shadow: 0 0 0 4px rgba(27, 60, 93, 0.12);
 }
 
-.login-button {
+.register-button {
   width: 100%;
   display: inline-flex;
   align-items: center;
@@ -157,13 +195,13 @@
   transition: transform 0.12s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
-.login-button:hover {
+.register-button:hover {
   filter: brightness(1.04);
   transform: translateY(-1px);
   box-shadow: 0 20px 34px -20px rgba(17, 24, 39, 0.72);
 }
 
-.login-button:disabled {
+.register-button:disabled {
   opacity: 0.72;
   cursor: not-allowed;
   transform: none;
@@ -181,11 +219,57 @@
 }
 
 @media (max-width: 1023px) {
+  .register-page {
+    align-items: flex-start;
+    padding: 0.75rem;
+  }
+
+  .register-shell {
+    border-radius: 1.25rem;
+  }
+
   .brand-panel {
     padding: 1.5rem;
   }
 
   .form-panel {
     padding: 1.5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .register-page {
+    padding: 0.5rem;
+  }
+
+  .register-shell {
+    border-radius: 1rem;
+  }
+
+  .brand-panel,
+  .form-panel {
+    padding: 1.1rem;
+  }
+
+  .brand-content {
+    gap: 0.9rem;
+  }
+
+  .field-input {
+    font-size: 16px;
+  }
+
+  .otp-inputs {
+    gap: 0.35rem;
+  }
+
+  .otp-input {
+    font-size: 1rem;
+    border-radius: 0.65rem;
+    padding: 0.56rem 0.2rem;
+  }
+
+  .register-button {
+    font-size: 0.95rem;
   }
 }

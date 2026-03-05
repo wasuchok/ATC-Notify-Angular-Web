@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { TokenService } from '../../core/services/token.service';
@@ -11,11 +11,11 @@ import { SwalService } from '../../shared/swal/swal.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   showPassword = false;
@@ -25,8 +25,14 @@ export class LoginComponent {
     private readonly api: ApiService,
     private readonly tokenService: TokenService,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     private readonly swal: SwalService
   ) { }
+
+  ngOnInit(): void {
+    const prefilledEmail = this.route.snapshot.queryParamMap.get('email');
+    if (prefilledEmail) this.email = prefilledEmail;
+  }
 
   async onSubmit() {
     if (this.loading()) return;

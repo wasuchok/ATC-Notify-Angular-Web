@@ -57,6 +57,63 @@ body {
   font-family: inherit;
 }
 
+/* Auth page transition: login <-> register */
+html[data-auth-transition='forward']::view-transition-old(root),
+html[data-auth-transition='backward']::view-transition-old(root),
+html[data-auth-transition='forward']::view-transition-new(root),
+html[data-auth-transition='backward']::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-auth-transition='forward']::view-transition-old(root) {
+  animation-name: auth-route-old-forward;
+}
+
+html[data-auth-transition='forward']::view-transition-new(root) {
+  animation-name: auth-route-new-forward;
+}
+
+html[data-auth-transition='backward']::view-transition-old(root) {
+  animation-name: auth-route-old-backward;
+}
+
+html[data-auth-transition='backward']::view-transition-new(root) {
+  animation-name: auth-route-new-backward;
+}
+
+@keyframes auth-route-old-forward {
+  to {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.985);
+    filter: blur(2px);
+  }
+}
+
+@keyframes auth-route-new-forward {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.985);
+    filter: blur(2px);
+  }
+}
+
+@keyframes auth-route-old-backward {
+  to {
+    opacity: 0;
+    transform: translateX(20px) scale(0.985);
+    filter: blur(2px);
+  }
+}
+
+@keyframes auth-route-new-backward {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.985);
+    filter: blur(2px);
+  }
+}
+
 /* Global Utilities */
 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
