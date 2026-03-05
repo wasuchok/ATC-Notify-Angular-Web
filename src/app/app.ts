@@ -19,12 +19,15 @@ import { Subscription } from 'rxjs';
 })
 export class App implements OnInit, OnDestroy {
   showSplash = signal(true);
+  splashLeaving = signal(false);
 
   private readonly splashMinDurationMs = 900;
+  private readonly splashExitDurationMs = 280;
   private minDurationDone = false;
   private firstRouteSettled = false;
   private routerSub?: Subscription;
   private minDurationTimer?: ReturnType<typeof setTimeout>;
+  private splashHideTimer?: ReturnType<typeof setTimeout>;
 
   constructor(private readonly router: Router) {}
 
@@ -48,11 +51,18 @@ export class App implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.minDurationTimer) clearTimeout(this.minDurationTimer);
+    if (this.splashHideTimer) clearTimeout(this.splashHideTimer);
     this.routerSub?.unsubscribe();
   }
 
   private tryHideSplash() {
     if (!this.firstRouteSettled || !this.minDurationDone) return;
-    this.showSplash.set(false);
+    if (!this.showSplash() || this.splashLeaving()) return;
+
+    this.splashLeaving.set(true);
+    this.splashHideTimer = setTimeout(() => {
+      this.showSplash.set(false);
+      this.splashLeaving.set(false);
+    }, this.splashExitDurationMs);
   }
 }

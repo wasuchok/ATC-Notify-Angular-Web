@@ -159,6 +159,38 @@
   box-shadow: 0 0 0 4px rgba(27, 60, 93, 0.12);
 }
 
+.otp-input.otp-valid {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.otp-input.otp-invalid {
+  border-color: #ef4444;
+  background: #fff1f2;
+}
+
+.otp-feedback {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.otp-checking {
+  color: #64748b;
+}
+
+.otp-valid-text {
+  color: #15803d;
+}
+
+.otp-invalid-text {
+  color: #b91c1c;
+}
+
+.otp-neutral-text {
+  color: #64748b;
+}
+
 .field-input {
   width: 100%;
   border-radius: 0.9rem;

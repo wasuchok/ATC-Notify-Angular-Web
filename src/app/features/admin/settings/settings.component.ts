@@ -121,6 +121,12 @@ export class SettingsComponent {
       icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a4 4 0 11-8 0 4 4 0 018 0z',
     },
     {
+      path: 'register-keys',
+      label: 'รหัสคำเชิญสมัครสมาชิก',
+      description: 'สร้าง Invite Code 6 หลัก พร้อมวันหมดอายุ',
+      icon: 'M12 8c-2.21 0-4 1.79-4 4m8 0a4 4 0 10-8 0m8 0v4a2 2 0 01-2 2h-4a2 2 0 01-2-2v-4m6-6l1-1m-8 1L7 5m5 3V3',
+    },
+    {
       path: 'channels',
       label: 'จัดการแชนแนล',
       description: 'สร้าง/สิทธิ์/ลบแชนแนล',
@@ -159,6 +165,7 @@ export class SettingsComponent {
     const items = this.filteredItems();
     const dashboard = items.filter((i) => i.path === 'dashboard');
     const people = items.filter((i) => i.path === 'users' || i.path === 'teams');
+    const onboarding = items.filter((i) => i.path === 'register-keys');
     const channels = items.filter((i) => i.path === 'channels');
     const integrations = items.filter((i) => i.path === 'webhooks');
     const system = items.filter(
@@ -168,6 +175,7 @@ export class SettingsComponent {
     const groups: Array<{ label: string; items: typeof items }> = [];
     if (dashboard.length) groups.push({ label: 'ทั่วไป', items: dashboard });
     if (people.length) groups.push({ label: 'ผู้ใช้และทีม', items: people });
+    if (onboarding.length) groups.push({ label: 'ลงทะเบียน', items: onboarding });
     if (channels.length) groups.push({ label: 'แชนแนล', items: channels });
     if (integrations.length) groups.push({ label: 'การเชื่อมต่อ', items: integrations });
     if (system.length) groups.push({ label: 'ระบบ', items: system });

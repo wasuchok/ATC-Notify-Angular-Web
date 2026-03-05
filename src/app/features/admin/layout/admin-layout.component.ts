@@ -66,7 +66,10 @@ import { SwalService } from '../../../shared/swal/swal.service';
             class="group w-full h-11 rounded-2xl border border-transparent hover:border-slate-700 hover:bg-slate-800 transition-all flex items-center justify-center relative"
             [class.opacity-50]="!c.is_active"
             [class.pointer-events-none]="!c.is_active"
-            [title]="c.name">
+            (mouseenter)="showChannelTooltip(c.name, $event)"
+            (mouseleave)="hideChannelTooltip()"
+            (focus)="showChannelTooltip(c.name, $event)"
+            (blur)="hideChannelTooltip()">
 
             <div class="w-10 h-10 rounded-2xl flex items-center justify-center ring-1 ring-black/10"
               [style.background]="normalizeColor(c.icon_color) || '#334155'">
@@ -98,6 +101,17 @@ import { SwalService } from '../../../shared/swal/swal.service';
         </div>
       </aside>
 
+      @if (channelTooltipVisible()) {
+        <div
+          class="fixed left-[84px] z-[2600] pointer-events-none"
+          [style.top.px]="channelTooltipTop()"
+          style="transform: translateY(-50%);">
+          <div class="px-2 py-1 rounded-md bg-slate-900 text-white text-[11px] font-semibold shadow-lg whitespace-nowrap">
+            {{ channelTooltipName() }}
+          </div>
+        </div>
+      }
+
       <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
         <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5">
           <div class="min-w-0">
@@ -111,14 +125,14 @@ import { SwalService } from '../../../shared/swal/swal.service';
             <div class="relative">
               <button type="button" (click)="toggleProfileMenu()"
                 class="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-                A
+                {{ profileInitial() }}
               </button>
 
               @if (profileMenuOpen()) {
                 <div class="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl py-1 border border-slate-100 z-[2100]">
                   <div class="px-4 py-3 border-b border-slate-50 bg-slate-50/50">
-                    <p class="text-sm font-bold text-slate-800">{{ profileName() || 'ผู้ดูแลระบบ' }}</p>
-                    <p class="text-xs text-slate-500">{{ profileEmail() || 'admin@notify.com' }}</p>
+                    <p class="text-sm font-bold text-slate-800">{{ profileName() || defaultProfileName() }}</p>
+                    <p class="text-xs text-slate-500">{{ profileEmail() || defaultProfileEmail() }}</p>
                   </div>
                   <div class="border-t border-slate-100 my-1"></div>
                   <button
@@ -163,6 +177,9 @@ export class AdminLayoutComponent {
   currentSubtitle = signal('เลือกห้องแชทจากแถบซ้าย');
   profileName = signal<string | null>(null);
   profileEmail = signal<string | null>(null);
+  channelTooltipVisible = signal(false);
+  channelTooltipName = signal('');
+  channelTooltipTop = signal(0);
 
   constructor(
     private readonly router: Router,
@@ -173,6 +190,12 @@ export class AdminLayoutComponent {
     private readonly swal: SwalService,
     private readonly api: ApiService
   ) {
+    const payload = this.tokenService.getAccessTokenPayload();
+    const payloadEmail = typeof payload?.email === 'string' ? payload.email : null;
+    const payloadRole = typeof payload?.role === 'string' ? payload.role.trim().toLowerCase() : null;
+    this.profileEmail.set(payloadEmail);
+    this.profileName.set(payloadRole === 'admin' ? 'ผู้ดูแลระบบ' : payloadEmail ? 'ผู้ใช้งาน' : null);
+
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationStart) {
         this.loadingService.show();
@@ -195,6 +218,23 @@ export class AdminLayoutComponent {
 
   isAdmin() {
     return this.tokenService.isAdmin();
+  }
+
+  defaultProfileName() {
+    const role = this.tokenService.getRole();
+    return role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน';
+  }
+
+  defaultProfileEmail() {
+    const payload = this.tokenService.getAccessTokenPayload();
+    const email = typeof payload?.email === 'string' ? payload.email.trim() : '';
+    return email || '-';
+  }
+
+  profileInitial() {
+    const display = this.profileName() || this.profileEmail() || this.defaultProfileName();
+    const value = String(display || '').trim();
+    return value ? value.charAt(0).toUpperCase() : 'U';
   }
 
   async logout() {
@@ -229,7 +269,10 @@ export class AdminLayoutComponent {
       this.profileName.set(res.data?.display_name ?? payload.email ?? null);
       this.profileEmail.set(res.data?.email ?? payload.email ?? null);
     } catch {
-      // ignore; keep defaults
+      const payloadEmail = typeof payload?.email === 'string' ? payload.email : null;
+      const payloadRole = typeof payload?.role === 'string' ? payload.role.trim().toLowerCase() : null;
+      this.profileEmail.set(payloadEmail);
+      this.profileName.set(payloadRole === 'admin' ? 'ผู้ดูแลระบบ' : payloadEmail ? 'ผู้ใช้งาน' : null);
     }
   }
 
@@ -245,6 +288,19 @@ export class AdminLayoutComponent {
 
   toggleProfileMenu() {
     this.profileMenuOpen.update((v) => !v);
+  }
+
+  showChannelTooltip(name: string | null | undefined, event: MouseEvent | FocusEvent) {
+    const target = (event.currentTarget || event.target) as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    this.channelTooltipName.set(String(name ?? '').trim() || 'Unnamed');
+    this.channelTooltipTop.set(rect.top + rect.height / 2);
+    this.channelTooltipVisible.set(true);
+  }
+
+  hideChannelTooltip() {
+    this.channelTooltipVisible.set(false);
   }
 
   updateHeaderByUrl() {

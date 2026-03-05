@@ -34,6 +34,7 @@ export const ADMIN_ROUTES: Routes = [
           { path: 'users', loadComponent: () => import('./users/user-management.component').then(m => m.UserManagementComponent) },
           { path: 'channels', loadComponent: () => import('./channels/channels').then(m => m.Channels) },
           { path: 'teams', loadComponent: () => import('./teams/teams').then(m => m.TeamsComponent) },
+          { path: 'register-keys', loadComponent: () => import('./register-keys/register-key-management.component').then(m => m.RegisterKeyManagementComponent) },
           { path: 'webhooks', loadComponent: () => import('./webhooks/webhook-management.component').then(m => m.WebhookManagementComponent) },
           { path: 'feature-flags', loadComponent: () => import('./feature-flags/feature-flags.component').then(m => m.FeatureFlagsComponent) },
           { path: 'developer-versions', loadComponent: () => import('./developer-versions/developer-versions.component').then(m => m.DeveloperVersionsComponent) },
@@ -58,6 +59,11 @@ export const ADMIN_ROUTES: Routes = [
         path: 'teams',
         canMatch: [adminGuard],
         loadComponent: () => import('./teams/teams').then(m => m.TeamsComponent)
+      },
+      {
+        path: 'register-keys',
+        canMatch: [adminGuard],
+        loadComponent: () => import('./register-keys/register-key-management.component').then(m => m.RegisterKeyManagementComponent)
       },
       {
         path: '**',

@@ -18,6 +18,7 @@ export class RegisterComponent {
   readonly inviteIndexes = [0, 1, 2, 3, 4, 5];
 
   @ViewChildren('inviteDigit') private inviteInputRefs?: QueryList<ElementRef<HTMLInputElement>>;
+  private inviteValidationSequence = 0;
 
   displayName = '';
   email = '';
@@ -28,6 +29,11 @@ export class RegisterComponent {
   showPassword = false;
   showConfirmPassword = false;
   loading = signal(false);
+  inviteChecking = signal(false);
+  inviteValid = signal<boolean | null>(null);
+  inviteValidationMessage = signal('');
+  inviteValidationReason = signal<string | null>(null);
+  inviteValidatedCode = signal('');
 
   constructor(
     private readonly api: ApiService,
@@ -51,6 +57,8 @@ export class RegisterComponent {
     if (value && index < this.inviteLength - 1) {
       this.focusInviteInput(index + 1);
     }
+
+    this.onInviteCodeChanged();
   }
 
   onInviteFocus(event: FocusEvent) {
@@ -100,6 +108,7 @@ export class RegisterComponent {
 
     const targetIndex = Math.min(digits.length, this.inviteLength - 1);
     this.focusInviteInput(targetIndex);
+    this.onInviteCodeChanged();
   }
 
   private focusInviteInput(index: number) {
@@ -123,6 +132,9 @@ export class RegisterComponent {
       this.swal.warning('รหัสคำเชิญไม่ถูกต้อง', 'กรุณากรอกรหัสคำเชิญตัวเลข 6 หลัก');
       return;
     }
+
+    const invitePass = await this.ensureInviteCodeValidated(invite_code);
+    if (!invitePass) return;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -157,6 +169,92 @@ export class RegisterComponent {
       this.swal.error('ลงทะเบียนไม่สำเร็จ', message || 'โปรดลองใหม่');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private onInviteCodeChanged() {
+    const inviteCode = this.inviteCode;
+
+    this.inviteValidationSequence += 1;
+    this.inviteValidatedCode.set('');
+
+    if (!inviteCode) {
+      this.inviteValid.set(null);
+      this.inviteValidationMessage.set('');
+      this.inviteValidationReason.set(null);
+      this.inviteChecking.set(false);
+      return;
+    }
+
+    if (inviteCode.length < this.inviteLength) {
+      this.inviteValid.set(null);
+      this.inviteValidationMessage.set('กรุณากรอกรหัสคำเชิญให้ครบ 6 หลัก');
+      this.inviteValidationReason.set(null);
+      this.inviteChecking.set(false);
+      return;
+    }
+
+    void this.validateInviteCodeWithApi(inviteCode, false);
+  }
+
+  private async ensureInviteCodeValidated(inviteCode: string) {
+    if (this.inviteValidatedCode() === inviteCode && this.inviteValid() === true) {
+      return true;
+    }
+    return this.validateInviteCodeWithApi(inviteCode, true);
+  }
+
+  private async validateInviteCodeWithApi(inviteCode: string, showAlertOnInvalid: boolean) {
+    const requestId = ++this.inviteValidationSequence;
+    this.inviteChecking.set(true);
+    this.inviteValidationMessage.set('กำลังตรวจสอบรหัสคำเชิญ...');
+    this.inviteValidationReason.set(null);
+
+    try {
+      const res = await firstValueFrom(
+        this.api.postPublic<{
+          message?: string;
+          data?: {
+            valid: boolean;
+            reason: string | null;
+            invite_code: string | null;
+            expires_at: string | null;
+          };
+        }>('/auth/register/validate-invite-code', { invite_code: inviteCode })
+      );
+
+      if (requestId !== this.inviteValidationSequence) return false;
+
+      const valid = !!res?.data?.valid;
+      const message = res?.message || (valid ? 'รหัสคำเชิญใช้งานได้' : 'รหัสคำเชิญไม่ถูกต้อง');
+
+      this.inviteValidatedCode.set(inviteCode);
+      this.inviteValid.set(valid);
+      this.inviteValidationReason.set(res?.data?.reason ?? null);
+      this.inviteValidationMessage.set(message);
+
+      if (!valid && showAlertOnInvalid) {
+        await this.swal.warning('รหัสคำเชิญไม่ถูกต้อง', message);
+      }
+      return valid;
+    } catch (err: any) {
+      if (requestId !== this.inviteValidationSequence) return false;
+
+      const message = err?.error?.message || 'รหัสคำเชิญไม่ถูกต้อง';
+      const reason = err?.error?.data?.reason ?? 'INVALID';
+      this.inviteValidatedCode.set(inviteCode);
+      this.inviteValid.set(false);
+      this.inviteValidationReason.set(String(reason));
+      this.inviteValidationMessage.set(message);
+
+      if (showAlertOnInvalid) {
+        await this.swal.warning('รหัสคำเชิญไม่ถูกต้อง', message);
+      }
+      return false;
+    } finally {
+      if (requestId === this.inviteValidationSequence) {
+        this.inviteChecking.set(false);
+      }
     }
   }
 }

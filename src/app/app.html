@@ -3,15 +3,33 @@
 <app-swal-overlay />
 
 @if (showSplash()) {
-  <div class="app-splash" aria-live="polite" aria-label="กำลังโหลดระบบ">
+  <div
+    class="app-splash"
+    [class.app-splash--leave]="splashLeaving()"
+    aria-live="polite"
+    aria-label="กำลังโหลดระบบ">
+    <span class="app-splash__orb app-splash__orb--left"></span>
+    <span class="app-splash__orb app-splash__orb--right"></span>
+
     <div class="app-splash__card">
-      <div class="app-splash__logo-wrap">
-        <img src="assets/logo.png" alt="ATC Notify" class="app-splash__logo" />
+      <div class="app-splash__brand">
+        <div class="app-splash__logo-wrap">
+          <img src="assets/logo.png" alt="Anotix" class="app-splash__logo" />
+        </div>
+        <div class="app-splash__brand-text">
+          <p class="app-splash__eyebrow">ATC NOTIFICATION PLATFORM</p>
+          <p class="app-splash__title">Anotix</p>
+          <p class="app-splash__subtitle">กำลังเตรียมระบบและสิทธิ์ผู้ใช้งาน...</p>
+        </div>
       </div>
-      <p class="app-splash__title">ATC Notify</p>
-      <p class="app-splash__subtitle">กำลังเตรียมระบบ...</p>
+
       <div class="app-splash__bar">
         <span class="app-splash__bar-fill"></span>
+      </div>
+
+      <div class="app-splash__status">
+        <span class="app-splash__status-dot"></span>
+        กำลังเชื่อมต่อบริการล่าสุด
       </div>
     </div>
   </div>

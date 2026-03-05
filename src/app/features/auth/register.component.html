@@ -12,7 +12,7 @@
               <img src="/assets/logo.png" alt="Logo" class="w-10 h-10 object-contain" loading="lazy" />
             </div>
             <div>
-              <p class="text-sm font-semibold leading-tight">ATC Notify</p>
+              <p class="text-sm font-semibold leading-tight">Anotix</p>
               <p class="text-xs text-white/75 leading-tight">Real-time Notify Center</p>
             </div>
           </div>
@@ -27,7 +27,7 @@
           </div>
 
           <p class="text-white/85 text-sm leading-relaxed hidden sm:block">
-            ลงทะเบียนผู้ใช้งานใหม่เพื่อเข้าถึงระบบ ATC Notify สำหรับติดตามเหตุการณ์สำคัญ
+            ลงทะเบียนผู้ใช้งานใหม่เพื่อเข้าถึงระบบ Anotix สำหรับติดตามเหตุการณ์สำคัญ
             และรับการแจ้งเตือนแบบเรียลไทม์อย่างปลอดภัย
           </p>
 
@@ -48,7 +48,7 @@
         <div class="max-w-xl w-full mx-auto register-form-wrap">
           <div class="space-y-1 mb-6 sm:mb-7">
             <p class="text-xs font-semibold text-[#1b3c5d] uppercase tracking-[0.16em]">ลงทะเบียนผู้ใช้งาน</p>
-            <h2 class="text-2xl sm:text-[30px] font-bold text-slate-900 leading-tight">สร้างบัญชี ATC Notify</h2>
+            <h2 class="text-2xl sm:text-[30px] font-bold text-slate-900 leading-tight">สร้างบัญชี Anotix</h2>
             <p class="text-slate-500 text-sm">กรอกข้อมูลเพื่อสมัครใช้งานระบบ</p>
           </div>
 
@@ -89,12 +89,23 @@
                   pattern="[0-9]*"
                   maxlength="1"
                   class="otp-input"
+                  [class.otp-valid]="inviteValid() === true"
+                  [class.otp-invalid]="inviteValid() === false"
                   [value]="inviteCodeDigits[i]"
                   [attr.aria-label]="'รหัสคำเชิญหลักที่ ' + (i + 1)"
                   (focus)="onInviteFocus($event)"
                   (input)="onInviteInput(i, $event)"
                   (keydown)="onInviteKeydown(i, $event)" />
               </div>
+              @if (inviteChecking()) {
+                <p class="otp-feedback otp-checking">กำลังตรวจสอบรหัสคำเชิญ...</p>
+              } @else if (inviteValid() === true) {
+                <p class="otp-feedback otp-valid-text">{{ inviteValidationMessage() }}</p>
+              } @else if (inviteValid() === false) {
+                <p class="otp-feedback otp-invalid-text">{{ inviteValidationMessage() }}</p>
+              } @else if (inviteValidationMessage()) {
+                <p class="otp-feedback otp-neutral-text">{{ inviteValidationMessage() }}</p>
+              }
             </div>
 
             <div>
@@ -180,7 +191,7 @@
 
             <button
               type="submit"
-              [disabled]="loading()"
+              [disabled]="loading() || inviteChecking()"
               class="register-button">
               <svg *ngIf="loading()" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
                 fill="none" viewBox="0 0 24 24">
