@@ -27,6 +27,22 @@ type MessagesResponse = {
   meta?: { nextCursor: number | null; hasMore: boolean };
 };
 
+type RoleOption = {
+  id: string;
+  name: string;
+};
+
+type UserProfileResponse = {
+  data?: {
+    uuid?: string;
+    display_name?: string | null;
+    email?: string | null;
+    role?: string | null;
+    role_ids?: Array<string | number>;
+    user_roles?: Array<{ roles?: { id?: string | number; name?: string } | null }>;
+  };
+};
+
 @Component({
   selector: 'app-chat-room',
   standalone: true,
@@ -44,11 +60,12 @@ type MessagesResponse = {
 
         <div class="flex items-center gap-2 flex-shrink-0">
           <div class="hidden sm:flex items-center -space-x-2">
-            <div *ngFor="let p of participants().slice(0, 5)"
-              class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-300"
-              [title]="p.name">
+            <button type="button" *ngFor="let p of participants().slice(0, 5)"
+              class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-300 hover:bg-slate-300 transition-colors"
+              [title]="'ดูโปรไฟล์: ' + p.name"
+              (click)="openProfile(p.uuid, p.name)">
               {{ p.initial }}
-            </div>
+            </button>
             <div *ngIf="participants().length > 5"
               class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-200"
               [title]="'อีก ' + (participants().length - 5) + ' คน'">
@@ -77,9 +94,12 @@ type MessagesResponse = {
 
         <div *ngFor="let m of messages()" class="flex gap-3" [class.justify-end]="isMe(m)">
           @if (!isMe(m)) {
-            <div class="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center ring-1 ring-slate-300 flex-shrink-0">
+            <button type="button"
+              class="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center ring-1 ring-slate-300 flex-shrink-0 hover:bg-slate-300 transition-colors"
+              [title]="'ดูโปรไฟล์: ' + (m.sender_name || 'ไม่ระบุ')"
+              (click)="openProfile(m.sender_uuid, m.sender_name)">
               {{ (m.sender_name || '?').trim().slice(0,1) }}
-            </div>
+            </button>
           }
 
           <div class="min-w-0 max-w-[720px]">
@@ -136,6 +156,115 @@ type MessagesResponse = {
       </form>
     </div>
 
+    @if (profileModalOpen()) {
+      <div class="fixed inset-0 z-[4400]">
+        <div class="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]" (click)="closeProfileModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+          <div class="w-full max-w-2xl">
+            <div class="relative rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-white">
+              <div class="h-16 bg-slate-50 border-b border-slate-100"></div>
+
+              <button type="button" (click)="closeProfileModal()"
+                class="absolute top-3 right-3 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                title="ปิด">
+                ✕
+              </button>
+
+              <div class="p-4 sm:p-5 -mt-7">
+                @if (profileLoading()) {
+                  <div class="rounded-2xl border border-slate-200 bg-white py-10 text-center text-sm text-slate-500">
+                    กำลังโหลดข้อมูลโปรไฟล์...
+                  </div>
+                } @else {
+                  <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+                      <div class="w-16 h-16 rounded-2xl bg-slate-200 text-slate-700 text-xl font-bold flex items-center justify-center border border-slate-300 flex-shrink-0">
+                        {{ profileInitial() }}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <p class="text-base sm:text-lg font-bold text-slate-900 truncate">
+                            {{ selectedProfileName() || 'ไม่ระบุชื่อ' }}
+                          </p>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700">
+                            {{ profileRoleLabel() }}
+                          </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-600 truncate">{{ selectedProfileEmail() || 'ไม่พบอีเมล' }}</p>
+                        <p class="text-[11px] font-mono text-slate-400 truncate">UUID: {{ selectedProfileUuid() || '-' }}</p>
+                      </div>
+                    </div>
+
+                    <div class="mt-4 h-px bg-slate-100"></div>
+
+                    <div class="mt-4 space-y-3">
+                      <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-semibold text-slate-600">Teams</p>
+                        <p class="text-[11px] text-slate-400">แตะที่ x เพื่อลบทีม</p>
+                      </div>
+
+                      @if (selectedTeamIds().length === 0) {
+                        <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                          ยังไม่มีทีม
+                        </div>
+                      } @else {
+                        <div class="flex flex-wrap gap-2">
+                          @for (teamId of selectedTeamIds(); track teamId) {
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] text-slate-700">
+                              {{ teamName(teamId) }}
+                              <button type="button"
+                                class="inline-flex items-center justify-center w-4 h-4 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                                [disabled]="!canEditProfileTeams() || profileSaving()"
+                                (click)="removeTeam(teamId)"
+                                title="ลบทีม">
+                                ×
+                              </button>
+                            </span>
+                          }
+                        </div>
+                      }
+
+                      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <select [(ngModel)]="teamToAddId" name="teamToAddId"
+                          class="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:border-slate-300 focus:ring-4 focus:ring-slate-200 outline-none transition-all"
+                          [disabled]="!canEditProfileTeams() || profileSaving()">
+                          <option value="">เลือกทีมที่ต้องการเพิ่ม...</option>
+                          <option *ngFor="let t of availableTeamOptions()" [value]="t.id">{{ t.name }}</option>
+                        </select>
+                        <button type="button" (click)="addTeam()"
+                          class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          [disabled]="!canEditProfileTeams() || !teamToAddId || profileSaving()">
+                          เพิ่มทีม
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  @if (profileError()) {
+                    <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      {{ profileError() }}
+                    </div>
+                  }
+
+                  <div class="mt-3 flex justify-end gap-2">
+                    <button type="button" (click)="closeProfileModal()"
+                      class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50 transition-colors">
+                      ปิด
+                    </button>
+                    <button type="button" (click)="saveTeams()"
+                      class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm hover:bg-slate-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      [disabled]="!canEditProfileTeams() || profileSaving()">
+                      {{ profileSaving() ? 'กำลังบันทึก...' : 'บันทึกทีม' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
     @if (lightboxUrl()) {
       <div class="fixed inset-0 z-[4500]">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeImage()"></div>
@@ -174,8 +303,8 @@ type MessagesResponse = {
   `,
 })
 export class ChatRoomComponent {
-@ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
-@ViewChild('messageInput') messageInput?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
+  @ViewChild('messageInput') messageInput?: ElementRef<HTMLTextAreaElement>;
 
   channelId = signal<number | null>(null);
   messages = signal<ChatMessage[]>([]);
@@ -189,6 +318,18 @@ export class ChatRoomComponent {
   private removeScrollListener: (() => void) | null = null;
   private readonly messageIds = new Set<number>();
   lightboxUrl = signal<string | null>(null);
+  profileModalOpen = signal(false);
+  profileLoading = signal(false);
+  profileSaving = signal(false);
+  selectedProfileUuid = signal('');
+  selectedProfileName = signal('');
+  selectedProfileEmail = signal('');
+  selectedProfileRole = signal('');
+  profileError = signal('');
+  selectedTeamIds = signal<string[]>([]);
+  teamOptions = signal<RoleOption[]>([]);
+  teamToAddId = '';
+  private teamOptionsLoaded = false;
   private pendingScrollFrames = 0;
   private scrollRaf: number | null = null;
   private initialAutoScroll = false;
@@ -278,6 +419,134 @@ export class ChatRoomComponent {
       list.push({ uuid, name, initial: (name[0] || '?').toUpperCase() });
     }
     return list;
+  }
+
+  profileInitial() {
+    const display = (this.selectedProfileName() || this.selectedProfileEmail() || '?').trim();
+    return (display[0] || '?').toUpperCase();
+  }
+
+  profileRoleLabel() {
+    const role = (this.selectedProfileRole() || '').trim().toLowerCase();
+    if (!role) return 'User';
+    if (role === 'admin') return 'Admin';
+    return role[0].toUpperCase() + role.slice(1);
+  }
+
+  canEditProfileTeams() {
+    return !!this.selectedProfileUuid();
+  }
+
+  teamName(teamId: string) {
+    return this.teamOptions().find((t) => t.id === teamId)?.name || teamId;
+  }
+
+  availableTeamOptions() {
+    const chosen = new Set(this.selectedTeamIds());
+    return this.teamOptions().filter((t) => !chosen.has(t.id));
+  }
+
+  addTeam() {
+    const next = this.teamToAddId.trim();
+    if (!next) return;
+    this.selectedTeamIds.update((prev) => (prev.includes(next) ? prev : [...prev, next]));
+    this.teamToAddId = '';
+  }
+
+  removeTeam(teamId: string) {
+    this.selectedTeamIds.update((prev) => prev.filter((id) => id !== teamId));
+  }
+
+  closeProfileModal() {
+    this.profileModalOpen.set(false);
+  }
+
+  openProfile(uuid: string, fallbackName?: string | null) {
+    const trimmedUuid = String(uuid || '').trim();
+    const fallback = String(fallbackName || '').trim();
+    this.selectedProfileUuid.set(trimmedUuid);
+    this.selectedProfileName.set(fallback || 'ไม่ระบุชื่อ');
+    this.selectedProfileEmail.set('');
+    this.selectedProfileRole.set('');
+    this.profileError.set('');
+    this.selectedTeamIds.set([]);
+    this.teamToAddId = '';
+    this.profileModalOpen.set(true);
+
+    if (!trimmedUuid) {
+      this.profileError.set('ไม่พบ UUID ของผู้ใช้งานจากข้อความนี้ จึงยังแก้ทีมไม่ได้');
+      return;
+    }
+
+    void this.loadProfile(trimmedUuid, fallback);
+  }
+
+  async saveTeams() {
+    const uuid = this.selectedProfileUuid();
+    if (!uuid) return;
+    if (this.profileSaving()) return;
+
+    this.profileSaving.set(true);
+    try {
+      await firstValueFrom(this.api.putPrivate(`/users/${uuid}/roles`, { role_ids: this.selectedTeamIds() }));
+      this.swal.success('สำเร็จ', 'บันทึกทีมเรียบร้อยแล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถบันทึกทีมได้';
+      this.swal.error('แจ้งเตือน', message);
+    } finally {
+      this.profileSaving.set(false);
+    }
+  }
+
+  private async loadProfile(uuid: string, fallbackName: string) {
+    this.profileLoading.set(true);
+    this.profileError.set('');
+    try {
+      await this.ensureTeamOptions();
+      const res = await firstValueFrom(this.api.getPrivate<UserProfileResponse>(`/users/${uuid}`));
+      const data = res?.data ?? {};
+      const name = String(data.display_name || fallbackName || 'ไม่ระบุชื่อ').trim();
+      const email = String(data.email || '').trim();
+      const role = String(data.role || '').trim();
+      const roleIds: string[] = Array.isArray(data.role_ids)
+        ? data.role_ids.map((id) => String(id ?? '')).filter((id) => !!id)
+        : [];
+
+      const fromUserRoles: string[] = Array.isArray(data.user_roles)
+        ? data.user_roles
+            .map((entry) => String(entry?.roles?.id ?? ''))
+            .filter((id) => !!id)
+        : [];
+
+      this.selectedProfileName.set(name || 'ไม่ระบุชื่อ');
+      this.selectedProfileEmail.set(email);
+      this.selectedProfileRole.set(role);
+      this.selectedTeamIds.set(roleIds.length > 0 ? roleIds : fromUserRoles);
+    } catch {
+      this.profileError.set('ไม่พบข้อมูลผู้ใช้งานในระบบ หรือไม่มีสิทธิ์ดูข้อมูลนี้');
+      this.selectedTeamIds.set([]);
+    } finally {
+      this.profileLoading.set(false);
+    }
+  }
+
+  private async ensureTeamOptions() {
+    if (this.teamOptionsLoaded) return;
+    try {
+      const res = await firstValueFrom(this.api.getPrivate<{ data?: Array<{ id?: string | number; name?: string }> }>('/role'));
+      const options =
+        Array.isArray(res?.data)
+          ? res.data
+              .map((r) => ({ id: String(r?.id ?? ''), name: String(r?.name ?? '') }))
+              .filter((r) => !!r.id && !!r.name)
+          : [];
+      this.teamOptions.set(options);
+      this.teamOptionsLoaded = true;
+    } catch {
+      this.teamOptions.set([]);
+      this.teamOptionsLoaded = false;
+      this.profileError.set('ไม่สามารถโหลดรายการทีมได้');
+    }
   }
 
   async fetchMessages() {
@@ -467,9 +736,15 @@ export class ChatRoomComponent {
 
   onDocumentKeydown(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
-    if (!this.lightboxUrl()) return;
-    event.preventDefault();
-    this.closeImage();
+    if (this.lightboxUrl()) {
+      event.preventDefault();
+      this.closeImage();
+      return;
+    }
+    if (this.profileModalOpen()) {
+      event.preventDefault();
+      this.closeProfileModal();
+    }
   }
 
   private async markReadIfNeeded(channelId: number, senderUuid?: string) {
