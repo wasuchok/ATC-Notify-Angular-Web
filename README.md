@@ -32,19 +32,12 @@ npm run build
 
 ## Config (API Base URL)
 
-ค่า default ของ API คือ `http://localhost:3300/api/v1` (ดูที่ `web-notify/src/app/core/config/api.config.ts`)
+ค่า API base URL ถูกกำหนดผ่าน Angular environments:
 
-Override ได้ด้วย env var ตอนรัน:
+- Development: `src/environments/environment.ts`
+- Production: `src/environments/environment.production.ts`
 
-- `NG_APP_API_URL`
-- `NG_APP_API_BASE`
-
-ตัวอย่าง (PowerShell):
-
-```powershell
-$env:NG_APP_API_URL="http://10.17.3.244:3300/api/v1"
-npm run start
-```
+โดย `angular.json` จะใช้ `fileReplacements` ตอน build production ให้อัตโนมัติ
 
 ## Admin
 
@@ -54,4 +47,3 @@ npm run start
 
 - `MaterialIcons-Regular.otf` ใช้เพื่อให้ `icon_codepoint` ตรงกับ Flutter
 - Assets: `public/` และ `src/assets/` (ดู `web-notify/angular.json`)
-z
