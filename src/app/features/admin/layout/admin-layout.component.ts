@@ -120,6 +120,23 @@ import { SwalService } from '../../../shared/swal/swal.service';
           </div>
 
           <div class="flex items-center gap-2">
+            <div
+              class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors"
+              [class.border-emerald-200]="isRealtimeConnected()"
+              [class.bg-emerald-50]="isRealtimeConnected()"
+              [class.text-emerald-700]="isRealtimeConnected()"
+              [class.border-slate-200]="!isRealtimeConnected()"
+              [class.bg-slate-100]="!isRealtimeConnected()"
+              [class.text-slate-600]="!isRealtimeConnected()"
+              [attr.title]="realtimeStatusTitle()">
+              <span
+                class="h-2.5 w-2.5 rounded-full ring-4"
+                [class.bg-emerald-500]="isRealtimeConnected()"
+                [class.ring-emerald-100]="isRealtimeConnected()"
+                [class.bg-slate-400]="!isRealtimeConnected()"
+                [class.ring-slate-200]="!isRealtimeConnected()"></span>
+              <span>{{ realtimeStatusText() }}</span>
+            </div>
 
 
             <div class="relative">
@@ -207,13 +224,27 @@ export class AdminLayoutComponent {
       }
     });
 
-    this.realtime.connect();
+    void this.realtime.connect();
     void this.refreshChannels();
     void this.loadUserProfile();
   }
 
   loading() {
     return this.loadingService.loading();
+  }
+
+  isRealtimeConnected() {
+    return this.realtime.connected();
+  }
+
+  realtimeStatusText() {
+    return this.isRealtimeConnected() ? 'ออนไลน์' : 'ออฟไลน์';
+  }
+
+  realtimeStatusTitle() {
+    return this.isRealtimeConnected()
+      ? 'WebSocket เชื่อมต่อกับ server อยู่'
+      : 'WebSocket ไม่ได้เชื่อมต่อกับ server';
   }
 
   isAdmin() {
