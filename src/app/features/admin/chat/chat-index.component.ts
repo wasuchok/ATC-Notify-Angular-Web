@@ -41,12 +41,12 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
                     [style.background]="normalizeColor(c.icon_color) || '#1e293b'">
                     {{ iconGlyph(c.icon_codepoint) || (c.name[0] || '?') }}
                   </div>
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ c.name }}</p>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-slate-900 truncate">{{ c.name }}</p>
                     <p class="text-[11px] text-slate-400">{{ c.is_active ? 'เผยแพร่ให้ทุกคน' : 'ปิดใช้งาน' }}</p>
                   </div>
                 </div>
-                <p class="mt-3 text-[13px] text-slate-600 min-h-[40px]">
+                <p class="mt-3 text-[13px] text-slate-600 min-h-[40px] truncate">
                   {{ c.last_message_content || 'ยังไม่มีข้อความภายในห้องนี้' }}
                 </p>
                 <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
@@ -69,12 +69,12 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
                     [style.background]="normalizeColor(c.icon_color) || '#334155'">
                     {{ iconGlyph(c.icon_codepoint) || (c.name[0] || '?') }}
                   </div>
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ c.name }}</p>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-slate-900 truncate">{{ c.name }}</p>
                     <p class="text-[11px] text-slate-400">{{ c.is_active ? 'จำกัดบทบาทเฉพาะ' : 'ปิดใช้งาน' }}</p>
                   </div>
                 </div>
-                <p class="mt-3 text-[13px] text-slate-600 min-h-[40px]">
+                <p class="mt-3 text-[13px] text-slate-600 min-h-[40px] truncate">
                   {{ c.last_message_content || 'ยังไม่มีข้อความภายในห้องนี้' }}
                 </p>
                 <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">

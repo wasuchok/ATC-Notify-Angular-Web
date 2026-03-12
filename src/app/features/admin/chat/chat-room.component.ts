@@ -51,14 +51,9 @@ type UserProfileResponse = {
     '(document:keydown)': 'onDocumentKeydown($event)',
   },
   template: `
-    <div class="h-full flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <p class="text-sm font-bold text-slate-900 truncate">{{ channelName() }}</p>
-          <p class="text-xs text-slate-500 truncate">{{ channelMeta() }}</p>
-        </div>
-
-        <div class="flex items-center gap-2 flex-shrink-0">
+    <div class="h-full min-h-0 flex flex-col">
+      <div class="mb-3 flex items-center justify-between gap-3 px-1">
+        <div class="min-w-0 flex items-center gap-3">
           <div class="hidden sm:flex items-center -space-x-2">
             <button type="button" *ngFor="let p of participants().slice(0, 5)"
               class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-300 hover:bg-slate-300 transition-colors"
@@ -72,88 +67,94 @@ type UserProfileResponse = {
               +{{ participants().length - 5 }}
             </div>
           </div>
-
-          <button type="button" (click)="fetchMessages()"
-            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-xs">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.708M21 3v6h-6" />
-            </svg>
-            รีเฟรช
-          </button>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-slate-700 truncate">{{ participants().length || 0 }} ผู้เข้าร่วม</p>
+            <p class="text-[11px] text-slate-500 truncate">{{ channelMeta() }}</p>
+          </div>
         </div>
+
+        <button type="button" (click)="fetchMessages()"
+          class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors text-xs flex-shrink-0 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.708M21 3v6h-6" />
+          </svg>
+          รีเฟรช
+        </button>
       </div>
 
-      <div #scrollEl class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/50">
-        <div *ngIf="loadingOlder()" class="py-2 text-center text-[11px] text-slate-500">
-          กำลังโหลดข้อความเก่า...
-        </div>
-        <div *ngIf="messages().length === 0" class="py-10 text-center text-slate-500 text-sm">
-          ยังไม่มีข้อความ
-        </div>
-
-        <div *ngFor="let m of messages()" class="flex gap-3" [class.justify-end]="isMe(m)">
-          @if (!isMe(m)) {
-            <button type="button"
-              class="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center ring-1 ring-slate-300 flex-shrink-0 hover:bg-slate-300 transition-colors"
-              [title]="'ดูโปรไฟล์: ' + (m.sender_name || 'ไม่ระบุ')"
-              (click)="openProfile(m.sender_uuid, m.sender_name)">
-              {{ (m.sender_name || '?').trim().slice(0,1) }}
-            </button>
-          }
-
-          <div class="min-w-0 max-w-[720px]">
-            <div class="flex items-center gap-2" [class.justify-end]="isMe(m)">
-              <p *ngIf="!isMe(m)" class="text-xs font-semibold text-slate-900 truncate max-w-[220px]">{{ m.sender_name }}</p>
-              <span class="text-[11px] text-slate-400 tabular-nums">{{ thaiTime(m.created_at) }}</span>
-              <span *ngIf="m.type && m.type !== 'text'" class="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 bg-white text-slate-700 font-semibold">
-                {{ m.type }}
-              </span>
-            </div>
-
-            <div class="mt-1">
-              <img *ngIf="m.type === 'image' && m.image_url" [src]="resolveMediaUrl(m.image_url)"
-                class="max-w-[360px] rounded-2xl border border-slate-200 bg-white cursor-zoom-in hover:opacity-95 transition-opacity"
-                [class.ml-auto]="isMe(m)"
-                (click)="openImage(resolveMediaUrl(m.image_url))"
-                (load)="onMediaLoaded()" />
-
-              <div *ngIf="m.content"
-                class="inline-block rounded-2xl px-4 py-3 border text-sm whitespace-pre-wrap break-words"
-                [class.bg-white]="!isMe(m)"
-                [class.border-slate-200]="!isMe(m)"
-                [class.text-slate-700]="!isMe(m)"
-                [class.bg-slate-900]="isMe(m)"
-                [class.border-slate-900]="isMe(m)"
-                [class.text-white]="isMe(m)"
-                [class.ml-auto]="isMe(m)">
-                {{ m.content }}
-              </div>
-            </div>
+      <div class="flex-1 min-h-0 flex flex-col rounded-[28px] border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div #scrollEl class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.98))]">
+          <div *ngIf="loadingOlder()" class="py-2 text-center text-[11px] text-slate-500">
+            กำลังโหลดข้อความเก่า...
+          </div>
+          <div *ngIf="messages().length === 0" class="py-10 text-center text-slate-500 text-sm">
+            ยังไม่มีข้อความ
           </div>
 
-          @if (isMe(m)) {
-            <div class="w-9 h-9 rounded-2xl bg-slate-900 text-white font-bold flex items-center justify-center ring-1 ring-slate-800 flex-shrink-0">
-              {{ myInitial() }}
-            </div>
-          }
-        </div>
-      </div>
+          <div *ngFor="let m of messages()" class="flex gap-3" [class.justify-end]="isMe(m)">
+            @if (!isMe(m)) {
+              <button type="button"
+                class="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center ring-1 ring-slate-300 flex-shrink-0 hover:bg-slate-300 transition-colors"
+                [title]="'ดูโปรไฟล์: ' + (m.sender_name || 'ไม่ระบุ')"
+                (click)="openProfile(m.sender_uuid, m.sender_name)">
+                {{ (m.sender_name || '?').trim().slice(0,1) }}
+              </button>
+            }
 
-      <form class="p-4 border-t border-slate-100 bg-white" (submit)="sendMessage($event)">
-        <div class="flex items-end gap-2">
-          <textarea #messageInput [(ngModel)]="draft" name="draft" rows="1"
-            (keydown.enter)="onEnter($event)"
-            placeholder="พิมพ์ข้อความ..."
-            class="flex-1 resize-none px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-200 outline-none transition-all text-sm"
-            [disabled]="sending()"></textarea>
-          <button type="submit" [disabled]="sending() || !draft.trim()"
-            class="inline-flex items-center justify-center px-4 py-3 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-            ส่ง
-          </button>
+            <div class="min-w-0 max-w-[720px]">
+              <div class="flex items-center gap-2" [class.justify-end]="isMe(m)">
+                <p *ngIf="!isMe(m)" class="text-xs font-semibold text-slate-900 truncate max-w-[220px]">{{ m.sender_name }}</p>
+                <span class="text-[11px] text-slate-400 tabular-nums">{{ thaiTime(m.created_at) }}</span>
+                <span *ngIf="m.type && m.type !== 'text'" class="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 bg-white text-slate-700 font-semibold">
+                  {{ m.type }}
+                </span>
+              </div>
+
+              <div class="mt-1">
+                <img *ngIf="m.type === 'image' && m.image_url" [src]="resolveMediaUrl(m.image_url)"
+                  class="max-w-[360px] rounded-2xl border border-slate-200 bg-white cursor-zoom-in hover:opacity-95 transition-opacity"
+                  [class.ml-auto]="isMe(m)"
+                  (click)="openImage(resolveMediaUrl(m.image_url))"
+                  (load)="onMediaLoaded()" />
+
+                <div *ngIf="m.content"
+                  class="inline-block rounded-2xl px-4 py-3 border text-sm whitespace-pre-wrap break-words shadow-sm"
+                  [class.bg-white]="!isMe(m)"
+                  [class.border-slate-200]="!isMe(m)"
+                  [class.text-slate-700]="!isMe(m)"
+                  [class.bg-slate-900]="isMe(m)"
+                  [class.border-slate-900]="isMe(m)"
+                  [class.text-white]="isMe(m)"
+                  [class.ml-auto]="isMe(m)">
+                  {{ m.content }}
+                </div>
+              </div>
+            </div>
+
+            @if (isMe(m)) {
+              <div class="w-9 h-9 rounded-2xl bg-slate-900 text-white font-bold flex items-center justify-center ring-1 ring-slate-800 flex-shrink-0">
+                {{ myInitial() }}
+              </div>
+            }
+          </div>
         </div>
-        <p class="mt-2 text-[11px] text-slate-500">Enter เพื่อส่ง • Shift+Enter เพื่อขึ้นบรรทัดใหม่</p>
-      </form>
+
+        <form class="border-t border-slate-100 bg-white/95 p-4 backdrop-blur-sm" (submit)="sendMessage($event)">
+          <div class="flex items-end gap-2">
+            <textarea #messageInput [(ngModel)]="draft" name="draft" rows="1"
+              (keydown.enter)="onEnter($event)"
+              placeholder="พิมพ์ข้อความ..."
+              class="flex-1 resize-none px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-200 outline-none transition-all text-sm"
+              [disabled]="sending()"></textarea>
+            <button type="submit" [disabled]="sending() || !draft.trim()"
+              class="inline-flex items-center justify-center px-4 py-3 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
+              ส่ง
+            </button>
+          </div>
+          <p class="mt-2 text-[11px] text-slate-500">Enter เพื่อส่ง • Shift+Enter เพื่อขึ้นบรรทัดใหม่</p>
+        </form>
+      </div>
     </div>
 
     @if (profileModalOpen()) {
