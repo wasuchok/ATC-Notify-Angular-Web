@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiService } from '../../../core/services/api.service';
 import { LoadingService } from '../../../core/services/loading.service';
+import { AvatarCropperModalComponent } from '../../../shared/avatar/avatar-cropper-modal.component';
 import { SwalService } from '../../../shared/swal/swal.service';
 import { UserCardComponent } from './user-card.component';
 import { RoleOption, UserFormDrawerComponent } from './user-form-drawer.component';
@@ -23,10 +25,12 @@ import { User } from './user.model';
     UserPaginationComponent,
     UserViewModalComponent,
     UserFormDrawerComponent,
+    AvatarCropperModalComponent,
   ],
   templateUrl: './user-management.component.html',
 })
 export class UserManagementComponent {
+  @ViewChild('avatarInput') avatarInput?: ElementRef<HTMLInputElement>;
   private addDrawerCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private editDrawerCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,6 +76,10 @@ export class UserManagementComponent {
   showViewModal = signal(false);
   selectedUser = signal<User | null>(null);
   submitLoading = signal(false);
+  avatarUploading = signal(false);
+  avatarCropFile = signal<File | null>(null);
+  avatarDraftFile = signal<File | null>(null);
+  avatarDraftPreviewUrl = signal<string | null>(null);
   formError = signal('');
   form: {
     display_name: string;
@@ -123,6 +131,7 @@ export class UserManagementComponent {
             uuid: string;
             email: string;
             display_name: string;
+            avatar_url?: string | null;
             role: string;
             branch: string;
             team: string | null;
@@ -153,6 +162,7 @@ export class UserManagementComponent {
           team: u.team,
           status: u.deleted_at ? 'Inactive' : 'Active',
           avatarColor: colors[idx % colors.length],
+          avatarUrl: this.resolveUploadUrl(u.avatar_url ?? null),
           lastLogin: this.formatThaiDate(u.created_at)
         }))
       );
@@ -199,6 +209,8 @@ export class UserManagementComponent {
     this.form = { display_name: '', email: '', password: '', confirmPassword: '', role: 'employee', branch: '', teams: [] };
     this.formError.set('');
     this.editingUserId = null;
+    this.avatarDraftFile.set(null);
+    this.avatarDraftPreviewUrl.set(null);
 
     if (this.addDrawerCloseTimer) {
       clearTimeout(this.addDrawerCloseTimer);
@@ -214,6 +226,8 @@ export class UserManagementComponent {
     this.selectedUser.set(user);
     this.editingUserId = String(user.id);
     this.formError.set('');
+    this.avatarDraftFile.set(null);
+    this.avatarDraftPreviewUrl.set(null);
 
     if (this.editDrawerCloseTimer) {
       clearTimeout(this.editDrawerCloseTimer);
@@ -244,6 +258,9 @@ export class UserManagementComponent {
     this.selectedUser.set(null);
     this.showRoleSelector.set(false);
     this.roleSearchQuery.set('');
+    this.avatarCropFile.set(null);
+    this.avatarDraftFile.set(null);
+    this.avatarDraftPreviewUrl.set(null);
   }
 
   private closeAddDrawer() {
@@ -341,6 +358,90 @@ export class UserManagementComponent {
     });
   }
 
+  private resolveUploadUrl(url: string | null | undefined) {
+    const raw = String(url || '').trim();
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+    return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
+  }
+
+  selectedUserAvatar() {
+    return this.avatarDraftPreviewUrl() || this.selectedUser()?.avatarUrl || null;
+  }
+
+  selectedUserAvatarColor() {
+    return this.selectedUser()?.avatarColor || 'bg-slate-500';
+  }
+
+  selectedUserInitial() {
+    const name = String(this.form.display_name || this.selectedUser()?.name || 'U').trim();
+    return (name[0] || 'U').toUpperCase();
+  }
+
+  selectedUserId() {
+    const id = this.selectedUser()?.id;
+    return id === null || id === undefined ? '' : String(id);
+  }
+
+  openAvatarPicker() {
+    const input = this.avatarInput?.nativeElement;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }
+
+  onAvatarSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) return;
+    this.avatarCropFile.set(file);
+  }
+
+  closeAvatarCropper() {
+    this.avatarCropFile.set(null);
+  }
+
+  onAvatarCropped(blob: Blob) {
+    this.avatarCropFile.set(null);
+    this.avatarDraftFile.set(new File([blob], 'avatar.png', { type: blob.type || 'image/png' }));
+    this.avatarDraftPreviewUrl.set(URL.createObjectURL(blob));
+  }
+
+  clearDraftAvatar() {
+    this.avatarDraftFile.set(null);
+    this.avatarDraftPreviewUrl.set(null);
+  }
+
+  async uploadSelectedUserAvatar(blob: Blob) {
+    if (!this.editingUserId) return;
+
+    const formData = new FormData();
+    formData.append('image', new File([blob], 'avatar.png', { type: blob.type || 'image/png' }));
+
+    this.avatarUploading.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.api.postPrivate<{ data?: { avatar_url?: string | null } }>(`/users/${this.editingUserId}/avatar`, formData)
+      );
+      const avatarUrl = this.resolveUploadUrl(res?.data?.avatar_url ?? null);
+      const userId = this.editingUserId;
+      this.users.update((list) =>
+        list.map((user) => (String(user.id) === userId ? { ...user, avatarUrl } : user))
+      );
+      this.selectedUser.update((user) =>
+        user && String(user.id) === userId ? { ...user, avatarUrl } : user
+      );
+      this.avatarCropFile.set(null);
+      await this.swal.success('สำเร็จ', 'อัปเดตรูปโปรไฟล์แล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถอัปโหลดรูปโปรไฟล์ได้';
+      await this.swal.error('ไม่สำเร็จ', message);
+    } finally {
+      this.avatarUploading.set(false);
+    }
+  }
+
   async createUser() {
     if (this.submitLoading()) return;
     const payload = this.form;
@@ -361,6 +462,11 @@ export class UserManagementComponent {
       }));
 
       const userId = created?.data?.uuid as string | undefined;
+      if (userId && this.avatarDraftFile()) {
+        const formData = new FormData();
+        formData.append('image', this.avatarDraftFile()!);
+        await firstValueFrom(this.api.postPrivate(`/users/${userId}/avatar`, formData));
+      }
       if (userId && Array.isArray(payload.teams) && payload.teams.length > 0) {
         await firstValueFrom(this.api.putPrivate(`/users/${userId}/roles`, { role_ids: payload.teams }));
       }
@@ -397,6 +503,11 @@ export class UserManagementComponent {
       }));
 
       await firstValueFrom(this.api.putPrivate(`/users/${this.editingUserId}/roles`, { role_ids: payload.teams || [] }));
+      if (this.avatarDraftFile()) {
+        const formData = new FormData();
+        formData.append('image', this.avatarDraftFile()!);
+        await firstValueFrom(this.api.postPrivate(`/users/${this.editingUserId}/avatar`, formData));
+      }
 
       this.swal.success('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อยแล้ว');
       this.closeEditDrawer();
@@ -417,6 +528,18 @@ export class UserManagementComponent {
             }
             : u
         )
+      );
+      this.selectedUser.update((user) =>
+        user && String(user.id) === idToUpdate
+          ? {
+              ...user,
+              name: payload.display_name,
+              email: payload.email,
+              level: payload.role,
+              branch: payload.branch || '',
+              roles: nextRoles,
+            }
+          : user
       );
       await this.fetchUsers(this.currentPage(), this.itemsPerPage());
     } catch (err: any) {

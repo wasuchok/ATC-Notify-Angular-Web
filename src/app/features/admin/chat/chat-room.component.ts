@@ -9,6 +9,7 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
 import { LoadingService } from '../../../core/services/loading.service';
 import { RealtimePayload, RealtimeService } from '../../../core/services/realtime.service';
 import { TokenService } from '../../../core/services/token.service';
+import { AvatarCropperModalComponent } from '../../../shared/avatar/avatar-cropper-modal.component';
 import { SwalService } from '../../../shared/swal/swal.service';
 
 type ChatMessage = {
@@ -19,6 +20,7 @@ type ChatMessage = {
   image_url: string | null;
   sender_uuid: string;
   sender_name: string;
+  sender_avatar_url: string | null;
   created_at: string;
   read_by?: string[];
 };
@@ -39,6 +41,7 @@ type UserProfileResponse = {
     display_name?: string | null;
     email?: string | null;
     role?: string | null;
+    avatar_url?: string | null;
     role_ids?: Array<string | number>;
     user_roles?: Array<{ roles?: { id?: string | number; name?: string } | null }>;
   };
@@ -47,7 +50,7 @@ type UserProfileResponse = {
 @Component({
   selector: 'app-chat-room',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AvatarCropperModalComponent],
   host: {
     '(document:keydown)': 'onDocumentKeydown($event)',
     '(document:click)': 'closeMessageContextMenu()',
@@ -55,16 +58,20 @@ type UserProfileResponse = {
   template: `
     <div class="h-full min-h-0 flex flex-col">
       <div class="mb-3 flex items-center justify-between gap-3 px-1">
-        <div class="min-w-0 flex items-center gap-3">
-          <div class="hidden sm:flex items-center -space-x-2">
-            <button type="button" *ngFor="let p of participants().slice(0, 5)"
-              class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-300 hover:bg-slate-300 transition-colors"
+          <div class="min-w-0 flex items-center gap-3">
+            <div class="hidden sm:flex items-center -space-x-2">
+              <button type="button" *ngFor="let p of participants().slice(0, 5)"
+              class="w-8 h-8 overflow-hidden rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center hover:bg-slate-300 transition-colors"
               [title]="'ดูโปรไฟล์: ' + p.name"
               (click)="openProfile(p.uuid, p.name)">
-              {{ p.initial }}
-            </button>
+                @if (p.avatarUrl) {
+                  <img [src]="p.avatarUrl" class="h-full w-full object-cover" />
+                } @else {
+                  {{ p.initial }}
+                }
+              </button>
             <div *ngIf="participants().length > 5"
-              class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center ring-2 ring-white border border-slate-200"
+              class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center"
               [title]="'อีก ' + (participants().length - 5) + ' คน'">
               +{{ participants().length - 5 }}
             </div>
@@ -85,7 +92,7 @@ type UserProfileResponse = {
         </button>
       </div>
 
-      <div class="flex-1 min-h-0 flex flex-col rounded-[28px] border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div class="flex-1 min-h-0 flex flex-col rounded-[28px] bg-white overflow-hidden">
         <div #scrollEl class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.98))]">
           <div *ngIf="loadingOlder()" class="py-2 text-center text-[11px] text-slate-500">
             กำลังโหลดข้อความเก่า...
@@ -97,10 +104,14 @@ type UserProfileResponse = {
           <div *ngFor="let m of messages()" class="flex gap-3" [class.justify-end]="isMe(m)">
             @if (!isMe(m)) {
               <button type="button"
-                class="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center ring-1 ring-slate-300 flex-shrink-0 hover:bg-slate-300 transition-colors"
+                class="w-9 h-9 overflow-hidden rounded-2xl bg-slate-200 text-slate-700 font-bold flex items-center justify-center flex-shrink-0 hover:bg-slate-300 transition-colors"
                 [title]="'ดูโปรไฟล์: ' + (m.sender_name || 'ไม่ระบุ')"
                 (click)="openProfile(m.sender_uuid, m.sender_name)">
-                {{ (m.sender_name || '?').trim().slice(0,1) }}
+                @if (avatarUrl(m.sender_avatar_url)) {
+                  <img [src]="avatarUrl(m.sender_avatar_url)!" class="h-full w-full object-cover" />
+                } @else {
+                  {{ initialFromName(m.sender_name) }}
+                }
               </button>
             }
 
@@ -136,14 +147,18 @@ type UserProfileResponse = {
             </div>
 
             @if (isMe(m)) {
-              <div class="w-9 h-9 rounded-2xl bg-slate-900 text-white font-bold flex items-center justify-center ring-1 ring-slate-800 flex-shrink-0">
-                {{ myInitial() }}
+              <div class="w-9 h-9 overflow-hidden rounded-2xl bg-slate-900 text-white font-bold flex items-center justify-center flex-shrink-0">
+                @if (avatarUrl(m.sender_avatar_url)) {
+                  <img [src]="avatarUrl(m.sender_avatar_url)!" class="h-full w-full object-cover" />
+                } @else {
+                  {{ myInitial() }}
+                }
               </div>
             }
           </div>
         </div>
 
-        <form class="border-t border-slate-100 bg-white/95 p-4 backdrop-blur-sm" (submit)="sendMessage($event)">
+        <form class="bg-white/95 p-4 backdrop-blur-sm" (submit)="sendMessage($event)">
           <div class="flex items-end gap-2">
             <textarea #messageInput [(ngModel)]="draft" name="draft" rows="1"
               (keydown.enter)="onEnter($event)"
@@ -182,8 +197,12 @@ type UserProfileResponse = {
                 } @else {
                   <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                     <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-                      <div class="w-16 h-16 rounded-2xl bg-slate-200 text-slate-700 text-xl font-bold flex items-center justify-center border border-slate-300 flex-shrink-0">
-                        {{ profileInitial() }}
+                      <div class="w-16 h-16 overflow-hidden rounded-2xl bg-slate-200 text-slate-700 text-xl font-bold flex items-center justify-center border border-slate-300 flex-shrink-0">
+                        @if (selectedProfileAvatarUrl()) {
+                          <img [src]="selectedProfileAvatarUrl()!" class="h-full w-full object-cover" />
+                        } @else {
+                          {{ profileInitial() }}
+                        }
                       </div>
                       <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
@@ -197,6 +216,17 @@ type UserProfileResponse = {
                         <p class="text-xs sm:text-sm text-slate-600 truncate">{{ selectedProfileEmail() || 'ไม่พบอีเมล' }}</p>
                         <p class="text-[11px] font-mono text-slate-400 truncate">UUID: {{ selectedProfileUuid() || '-' }}</p>
                       </div>
+                      @if (canEditProfileAvatar()) {
+                        <div class="sm:ml-auto">
+                          <button
+                            type="button"
+                            (click)="openProfileAvatarPicker()"
+                            class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            [disabled]="avatarUploading()">
+                            {{ avatarUploading() ? 'กำลังอัปโหลดรูป...' : 'เปลี่ยนรูปโปรไฟล์' }}
+                          </button>
+                        </div>
+                      }
                     </div>
 
                     <div class="mt-4 h-px bg-slate-100"></div>
@@ -269,6 +299,14 @@ type UserProfileResponse = {
       </div>
     }
 
+    <input #avatarInput type="file" accept="image/png,image/jpeg,image/webp" class="hidden" (change)="onProfileAvatarSelected($event)" />
+
+    <app-avatar-cropper-modal
+      [file]="avatarCropFile()"
+      [title]="avatarCropTitle()"
+      (close)="closeAvatarCropper()"
+      (confirm)="uploadProfileAvatar($event)"></app-avatar-cropper-modal>
+
     @if (lightboxUrl()) {
       <div class="fixed inset-0 z-[4500]">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeImage()"></div>
@@ -328,6 +366,7 @@ type UserProfileResponse = {
 export class ChatRoomComponent {
   @ViewChild('scrollEl') scrollEl?: ElementRef<HTMLDivElement>;
   @ViewChild('messageInput') messageInput?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('avatarInput') avatarInput?: ElementRef<HTMLInputElement>;
 
   channelId = signal<number | null>(null);
   messages = signal<ChatMessage[]>([]);
@@ -348,10 +387,14 @@ export class ChatRoomComponent {
   selectedProfileName = signal('');
   selectedProfileEmail = signal('');
   selectedProfileRole = signal('');
+  selectedProfileAvatarUrl = signal<string | null>(null);
   profileError = signal('');
   selectedTeamIds = signal<string[]>([]);
   teamOptions = signal<RoleOption[]>([]);
   teamToAddId = '';
+  avatarUploading = signal(false);
+  avatarCropFile = signal<File | null>(null);
+  avatarUploadTargetUuid = signal('');
   private teamOptionsLoaded = false;
   private pendingScrollFrames = 0;
   private scrollRaf: number | null = null;
@@ -428,12 +471,14 @@ export class ChatRoomComponent {
   }
 
   myInitial() {
-    return 'A';
+    const payload = this.tokenService.getAccessTokenPayload();
+    const display = String(payload?.email || 'A').trim();
+    return (display[0] || 'A').toUpperCase();
   }
 
   participants() {
     const seen = new Set<string>();
-    const list: Array<{ uuid: string; name: string; initial: string }> = [];
+    const list: Array<{ uuid: string; name: string; initial: string; avatarUrl: string | null }> = [];
     const messages = this.messages();
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -441,7 +486,12 @@ export class ChatRoomComponent {
       if (!uuid || seen.has(uuid)) continue;
       seen.add(uuid);
       const name = (m.sender_name || 'ไม่ระบุ').trim();
-      list.push({ uuid, name, initial: (name[0] || '?').toUpperCase() });
+      list.push({
+        uuid,
+        name,
+        initial: this.initialFromName(name),
+        avatarUrl: this.avatarUrl(m.sender_avatar_url),
+      });
     }
     return list;
   }
@@ -460,6 +510,18 @@ export class ChatRoomComponent {
 
   canEditProfileTeams() {
     return !!this.selectedProfileUuid();
+  }
+
+  canEditProfileAvatar() {
+    const selected = this.selectedProfileUuid();
+    if (!selected) return false;
+    if (this.tokenService.isAdmin()) return true;
+    return selected === this.currentUserUuid();
+  }
+
+  avatarCropTitle() {
+    const name = this.selectedProfileName() || 'รูปโปรไฟล์';
+    return `รูปโปรไฟล์: ${name}`;
   }
 
   teamName(teamId: string) {
@@ -484,6 +546,8 @@ export class ChatRoomComponent {
 
   closeProfileModal() {
     this.profileModalOpen.set(false);
+    this.avatarCropFile.set(null);
+    this.avatarUploadTargetUuid.set('');
   }
 
   openProfile(uuid: string, fallbackName?: string | null) {
@@ -493,6 +557,7 @@ export class ChatRoomComponent {
     this.selectedProfileName.set(fallback || 'ไม่ระบุชื่อ');
     this.selectedProfileEmail.set('');
     this.selectedProfileRole.set('');
+    this.selectedProfileAvatarUrl.set(null);
     this.profileError.set('');
     this.selectedTeamIds.set([]);
     this.teamToAddId = '';
@@ -523,6 +588,56 @@ export class ChatRoomComponent {
     }
   }
 
+  openProfileAvatarPicker() {
+    if (!this.canEditProfileAvatar()) return;
+    const input = this.avatarInput?.nativeElement;
+    if (!input) return;
+    this.avatarUploadTargetUuid.set(this.selectedProfileUuid());
+    input.value = '';
+    input.click();
+  }
+
+  onProfileAvatarSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) return;
+    this.avatarCropFile.set(file);
+  }
+
+  closeAvatarCropper() {
+    this.avatarCropFile.set(null);
+    this.avatarUploadTargetUuid.set('');
+  }
+
+  async uploadProfileAvatar(blob: Blob) {
+    const targetUuid = this.avatarUploadTargetUuid() || this.selectedProfileUuid();
+    if (!targetUuid) return;
+
+    const formData = new FormData();
+    formData.append('image', new File([blob], 'avatar.png', { type: blob.type || 'image/png' }));
+
+    this.avatarUploading.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.api.postPrivate<{ data?: { avatar_url?: string | null } }>(`/users/${targetUuid}/avatar`, formData, {
+          withCredentials: true,
+        })
+      );
+      const nextAvatarUrl = this.avatarUrl(res?.data?.avatar_url ?? null);
+      this.selectedProfileAvatarUrl.set(nextAvatarUrl);
+      this.patchMessagesAvatar(targetUuid, nextAvatarUrl);
+      this.broadcastAvatarUpdated(targetUuid, nextAvatarUrl);
+      this.avatarCropFile.set(null);
+      this.avatarUploadTargetUuid.set('');
+      await this.swal.success('สำเร็จ', 'อัปเดตรูปโปรไฟล์แล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถอัปโหลดรูปโปรไฟล์ได้';
+      await this.swal.error('ไม่สำเร็จ', message);
+    } finally {
+      this.avatarUploading.set(false);
+    }
+  }
+
   private async loadProfile(uuid: string, fallbackName: string) {
     this.profileLoading.set(true);
     this.profileError.set('');
@@ -546,6 +661,7 @@ export class ChatRoomComponent {
       this.selectedProfileName.set(name || 'ไม่ระบุชื่อ');
       this.selectedProfileEmail.set(email);
       this.selectedProfileRole.set(role);
+      this.selectedProfileAvatarUrl.set(this.avatarUrl(data.avatar_url ?? null));
       this.selectedTeamIds.set(roleIds.length > 0 ? roleIds : fromUserRoles);
     } catch {
       this.profileError.set('ไม่พบข้อมูลผู้ใช้งานในระบบ หรือไม่มีสิทธิ์ดูข้อมูลนี้');
@@ -652,7 +768,7 @@ export class ChatRoomComponent {
         }, 0);
       }
     } catch {
-      // ignore
+     
     } finally {
       this.loadingOlder.set(false);
     }
@@ -853,6 +969,7 @@ export class ChatRoomComponent {
         image_url: data.image_url || null,
         sender_uuid: String(data.sender_uuid || ''),
         sender_name: String(data.sender_name || 'ไม่ระบุ'),
+        sender_avatar_url: data.sender_avatar_url || null,
         created_at: String(data.created_at || new Date().toISOString()),
         read_by: Array.isArray(data.read_by) ? data.read_by : [],
       };
@@ -910,5 +1027,35 @@ export class ChatRoomComponent {
     const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
     if (raw.startsWith('/')) return `${base}${raw}`;
     return `${base}/${raw}`;
+  }
+
+  avatarUrl(url: string | null | undefined) {
+    return this.resolveMediaUrl(url ?? null) || null;
+  }
+
+  initialFromName(value: string | null | undefined) {
+    const trimmed = String(value || '').trim();
+    return (trimmed[0] || '?').toUpperCase();
+  }
+
+  private currentUserUuid() {
+    const payload = this.tokenService.getAccessTokenPayload();
+    return typeof payload?.sub === 'string' ? payload.sub : '';
+  }
+
+  private patchMessagesAvatar(userUuid: string, avatarUrl: string | null) {
+    this.messages.update((prev) =>
+      prev.map((message) =>
+        message.sender_uuid === userUuid ? { ...message, sender_avatar_url: avatarUrl } : message
+      )
+    );
+  }
+
+  private broadcastAvatarUpdated(userId: string, avatarUrl: string | null) {
+    window.dispatchEvent(
+      new CustomEvent('notify:avatar-updated', {
+        detail: { userId, avatarUrl },
+      })
+    );
   }
 }

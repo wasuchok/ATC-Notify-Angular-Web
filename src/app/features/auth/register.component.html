@@ -54,6 +54,29 @@
 
           <form class="space-y-3.5 sm:space-y-4" (ngSubmit)="onSubmit()">
             <div>
+              <label class="field-label">รูปโปรไฟล์ (ไม่บังคับ)</label>
+              <div class="avatar-picker">
+                <div class="avatar-preview">
+                  @if (avatarPreviewUrl()) {
+                    <img [src]="avatarPreviewUrl()!" alt="Avatar preview" class="avatar-image" />
+                  } @else {
+                    <span>{{ (displayName || email || 'A').trim().charAt(0).toUpperCase() || 'A' }}</span>
+                  }
+                </div>
+                <div class="avatar-copy">
+                  <p class="avatar-title">เพิ่มรูปโปรไฟล์ตั้งแต่ตอนสมัคร</p>
+                  <p class="avatar-note">ไม่บังคับ รองรับ jpg, png, webp และครอปก่อนอัปโหลด</p>
+                </div>
+                <div class="avatar-actions">
+                  <button type="button" class="avatar-button" (click)="openAvatarPicker()">เลือกรูป</button>
+                  @if (avatarPreviewUrl()) {
+                    <button type="button" class="avatar-clear" (click)="clearAvatar()">ลบรูป</button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div>
               <label class="field-label">ชื่อแสดงผล</label>
               <input
                 type="text"
@@ -211,3 +234,12 @@
     </div>
   </div>
 </div>
+
+<input #avatarInput type="file" accept="image/png,image/jpeg,image/webp" class="hidden" (change)="onAvatarSelected($event)" />
+
+<app-avatar-cropper-modal
+  [file]="avatarCropSourceFile()"
+  title="รูปโปรไฟล์สำหรับลงทะเบียน"
+  (close)="closeAvatarCropper()"
+  (confirm)="onAvatarCropped($event)">
+</app-avatar-cropper-modal>

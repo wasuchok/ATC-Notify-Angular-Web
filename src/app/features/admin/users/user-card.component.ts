@@ -24,9 +24,13 @@ import { User } from './user.model';
 
       <div class="p-5 flex flex-col items-center flex-grow">
         <div
-          class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold text-white mb-3 shadow-sm relative ring-2 ring-white"
+          class="w-14 h-14 overflow-hidden rounded-full flex items-center justify-center text-lg font-bold text-white mb-3 shadow-sm relative ring-2 ring-white"
           [ngClass]="user.avatarColor">
-          {{ user.name.charAt(0) }}
+          @if (user.avatarUrl) {
+            <img [src]="user.avatarUrl" class="h-full w-full object-cover" />
+          } @else {
+            {{ user.name.charAt(0) }}
+          }
         </div>
 
         <h3 class="text-sm font-bold text-slate-800 text-center mb-0.5">{{ user.name }}</h3>

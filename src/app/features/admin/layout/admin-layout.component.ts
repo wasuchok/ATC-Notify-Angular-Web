@@ -1,18 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, signal } from '@angular/core';
 import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiService } from '../../../core/services/api.service';
 import { JoinedChannelsService } from '../../../core/services/joined-channels.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { RealtimeService } from '../../../core/services/realtime.service';
 import { TokenService } from '../../../core/services/token.service';
+import { AvatarCropperModalComponent } from '../../../shared/avatar/avatar-cropper-modal.component';
 import { SwalService } from '../../../shared/swal/swal.service';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, AvatarCropperModalComponent],
   template: `
     @if (loading()) {
       <div class="fixed inset-0 z-[1000] bg-black/20 backdrop-blur-sm flex items-center justify-center">
@@ -141,15 +143,39 @@ import { SwalService } from '../../../shared/swal/swal.service';
 
             <div class="relative">
               <button type="button" (click)="toggleProfileMenu()"
-                class="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-                {{ profileInitial() }}
+                class="h-9 w-9 overflow-hidden rounded-xl bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
+                @if (profileAvatarUrl()) {
+                  <img [src]="profileAvatarUrl()!" class="h-full w-full object-cover" />
+                } @else {
+                  {{ profileInitial() }}
+                }
               </button>
 
               @if (profileMenuOpen()) {
-                <div class="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl py-1 border border-slate-100 z-[2100]">
-                  <div class="px-4 py-3 border-b border-slate-50 bg-slate-50/50">
-                    <p class="text-sm font-bold text-slate-800">{{ profileName() || defaultProfileName() }}</p>
-                    <p class="text-xs text-slate-500">{{ profileEmail() || defaultProfileEmail() }}</p>
+                <div class="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl py-1 border border-slate-100 z-[2100]">
+                  <div class="px-4 py-4 border-b border-slate-50 bg-slate-50/50">
+                    <div class="flex items-center gap-3">
+                      <div class="h-14 w-14 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                        @if (profileAvatarUrl()) {
+                          <img [src]="profileAvatarUrl()!" class="h-full w-full object-cover" />
+                        } @else {
+                          {{ profileInitial() }}
+                        }
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-bold text-slate-800 truncate">{{ profileName() || defaultProfileName() }}</p>
+                        <p class="text-xs text-slate-500 truncate">{{ profileEmail() || defaultProfileEmail() }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="px-2 py-2">
+                    <button
+                      type="button"
+                      (click)="openSelfAvatarPicker()"
+                      class="w-full rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      [disabled]="avatarUploading()">
+                      {{ avatarUploading() ? 'กำลังอัปโหลดรูป...' : 'เปลี่ยนรูปโปรไฟล์' }}
+                    </button>
                   </div>
                   <div class="border-t border-slate-100 my-1"></div>
                   <button
@@ -170,6 +196,14 @@ import { SwalService } from '../../../shared/swal/swal.service';
         </main>
       </div>
     </div>
+
+    <input #avatarInput type="file" accept="image/png,image/jpeg,image/webp" class="hidden" (change)="onSelfAvatarSelected($event)" />
+
+    <app-avatar-cropper-modal
+      [file]="avatarCropFile()"
+      title="รูปโปรไฟล์ของฉัน"
+      (close)="closeAvatarCropper()"
+      (confirm)="uploadSelfAvatar($event)"></app-avatar-cropper-modal>
   `,
   styles: [
     `
@@ -189,11 +223,15 @@ import { SwalService } from '../../../shared/swal/swal.service';
   ],
 })
 export class AdminLayoutComponent {
+  @ViewChild('avatarInput') avatarInput?: ElementRef<HTMLInputElement>;
   profileMenuOpen = signal(false);
   currentTitle = signal('แชท');
   currentSubtitle = signal('เลือกห้องแชทจากแถบซ้าย');
   profileName = signal<string | null>(null);
   profileEmail = signal<string | null>(null);
+  profileAvatarUrl = signal<string | null>(null);
+  avatarUploading = signal(false);
+  avatarCropFile = signal<File | null>(null);
   channelTooltipVisible = signal(false);
   channelTooltipName = signal('');
   channelTooltipTop = signal(0);
@@ -227,6 +265,8 @@ export class AdminLayoutComponent {
     void this.realtime.connect();
     void this.refreshChannels();
     void this.loadUserProfile();
+
+    window.addEventListener('notify:avatar-updated', this.onAvatarUpdated as EventListener);
   }
 
   loading() {
@@ -268,6 +308,15 @@ export class AdminLayoutComponent {
     return value ? value.charAt(0).toUpperCase() : 'U';
   }
 
+  private readonly onAvatarUpdated = (event: Event) => {
+    const customEvent = event as CustomEvent<{ userId?: string; avatarUrl?: string | null }>;
+    const payload = this.tokenService.getAccessTokenPayload();
+    const me = typeof payload?.sub === 'string' ? payload.sub : '';
+    const userId = String(customEvent.detail?.userId || '').trim();
+    if (!me || userId !== me) return;
+    this.profileAvatarUrl.set(this.resolveUploadUrl(customEvent.detail?.avatarUrl ?? null));
+  };
+
   async logout() {
     const confirmed = await this.swal.question('ออกจากระบบ', 'ต้องการออกจากระบบใช่หรือไม่?');
     if (!confirmed) return;
@@ -293,17 +342,64 @@ export class AdminLayoutComponent {
     if (!id) return;
     try {
       const res = await firstValueFrom(
-        this.api.getPrivate<{ data: { display_name: string | null; email: string | null } }>(`/users/${id}`, {
+        this.api.getPrivate<{ data: { display_name: string | null; email: string | null; avatar_url?: string | null } }>(`/users/${id}`, {
           withCredentials: true,
         })
       );
       this.profileName.set(res.data?.display_name ?? payload.email ?? null);
       this.profileEmail.set(res.data?.email ?? payload.email ?? null);
+      this.profileAvatarUrl.set(this.resolveUploadUrl(res.data?.avatar_url ?? null));
     } catch {
       const payloadEmail = typeof payload?.email === 'string' ? payload.email : null;
       const payloadRole = typeof payload?.role === 'string' ? payload.role.trim().toLowerCase() : null;
       this.profileEmail.set(payloadEmail);
       this.profileName.set(payloadRole === 'admin' ? 'ผู้ดูแลระบบ' : payloadEmail ? 'ผู้ใช้งาน' : null);
+      this.profileAvatarUrl.set(null);
+    }
+  }
+
+  openSelfAvatarPicker() {
+    const input = this.avatarInput?.nativeElement;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }
+
+  onSelfAvatarSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) return;
+    this.avatarCropFile.set(file);
+  }
+
+  closeAvatarCropper() {
+    this.avatarCropFile.set(null);
+  }
+
+  async uploadSelfAvatar(blob: Blob) {
+    const payload = this.tokenService.getAccessTokenPayload();
+    const id = typeof payload?.sub === 'string' ? payload.sub : '';
+    if (!id) return;
+
+    const formData = new FormData();
+    formData.append('image', new File([blob], 'avatar.png', { type: blob.type || 'image/png' }));
+
+    this.avatarUploading.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.api.postPrivate<{ data?: { avatar_url?: string | null } }>(`/users/${id}/avatar`, formData, {
+          withCredentials: true,
+        })
+      );
+      this.profileAvatarUrl.set(this.resolveUploadUrl(res?.data?.avatar_url ?? null));
+      this.avatarCropFile.set(null);
+      this.profileMenuOpen.set(false);
+      await this.swal.success('สำเร็จ', 'อัปเดตรูปโปรไฟล์แล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถอัปโหลดรูปโปรไฟล์ได้';
+      await this.swal.error('ไม่สำเร็จ', message);
+    } finally {
+      this.avatarUploading.set(false);
     }
   }
 
@@ -319,6 +415,14 @@ export class AdminLayoutComponent {
 
   toggleProfileMenu() {
     this.profileMenuOpen.update((v) => !v);
+  }
+
+  resolveUploadUrl(url: string | null | undefined) {
+    const raw = String(url || '').trim();
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+    return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
   }
 
   showChannelTooltip(name: string | null | undefined, event: MouseEvent | FocusEvent) {

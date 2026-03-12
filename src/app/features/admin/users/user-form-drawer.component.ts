@@ -60,6 +60,76 @@ export type UserFormModel = {
           <div class="flex-1 overflow-y-auto">
             <form [id]="formId" class="p-5 sm:p-6 space-y-6" (ngSubmit)="submit.emit()">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @if (showAvatarUpload) {
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-800">รูปโปรไฟล์</label>
+                    <div class="mt-2 flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div
+                        class="h-16 w-16 overflow-hidden rounded-full ring-2 ring-white shadow-sm flex items-center justify-center text-lg font-bold text-white"
+                        [ngClass]="avatarColor">
+                        @if (avatarUrl) {
+                          <img [src]="avatarUrl" class="h-full w-full object-cover" />
+                        } @else {
+                          {{ avatarInitial }}
+                        }
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-slate-800">อัปโหลดรูปโปรไฟล์</p>
+                        <p class="text-xs text-slate-500">รองรับ jpg, png, webp ขนาดไม่เกิน 5MB</p>
+                      </div>
+                      <button
+                        type="button"
+                        class="inline-flex h-[42px] items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+                        [disabled]="avatarUploading || loading"
+                        (click)="chooseAvatar.emit()">
+                        {{ avatarUploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูป' }}
+                      </button>
+                    </div>
+
+                    @if (userId || userStatus || userLevel || userBranch || userTeams.length || userLastLogin) {
+                      <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">ข้อมูลผู้ใช้งาน</p>
+                        <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <p class="text-[11px] font-semibold text-slate-400">สถานะ</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ userStatus || '-' }}</p>
+                          </div>
+                          <div>
+                            <p class="text-[11px] font-semibold text-slate-400">ระดับสิทธิ์</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ userLevel || '-' }}</p>
+                          </div>
+                          <div>
+                            <p class="text-[11px] font-semibold text-slate-400">สาขา</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ userBranch || '-' }}</p>
+                          </div>
+                          <div>
+                            <p class="text-[11px] font-semibold text-slate-400">เข้าใช้งานล่าสุด</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ userLastLogin || '-' }}</p>
+                          </div>
+                          <div class="sm:col-span-2">
+                            <p class="text-[11px] font-semibold text-slate-400">ทีม</p>
+                            @if (userTeams.length) {
+                              <div class="mt-2 flex flex-wrap gap-2">
+                                @for (team of userTeams; track team) {
+                                  <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                    {{ team }}
+                                  </span>
+                                }
+                              </div>
+                            } @else {
+                              <p class="mt-1 text-sm font-semibold text-slate-800">-</p>
+                            }
+                          </div>
+                          <div class="sm:col-span-2">
+                            <p class="text-[11px] font-semibold text-slate-400">User ID</p>
+                            <p class="mt-1 truncate font-mono text-xs text-slate-600">{{ userId || '-' }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
                 <app-text-input
                   name="display_name"
                   [(ngModel)]="form.display_name"
@@ -210,9 +280,21 @@ export class UserFormDrawerComponent {
 
   @Input() showPasswordFields = true;
   @Input() passwordRequired = true;
+  @Input() showAvatarUpload = false;
+  @Input() avatarUrl: string | null = null;
+  @Input() avatarColor = 'bg-slate-500';
+  @Input() avatarInitial = 'U';
+  @Input() avatarUploading = false;
+  @Input() userStatus = '';
+  @Input() userLevel = '';
+  @Input() userBranch = '';
+  @Input() userTeams: string[] = [];
+  @Input() userLastLogin = '';
+  @Input() userId = '';
 
   @Output() close = new EventEmitter<void>();
   @Output() submit = new EventEmitter<void>();
+  @Output() chooseAvatar = new EventEmitter<void>();
 
   selectedTeamId = '';
 

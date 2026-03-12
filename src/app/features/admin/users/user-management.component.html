@@ -40,7 +40,13 @@
     [errorMessage]="formError()"
     [showPasswordFields]="true"
     [passwordRequired]="true"
+    [showAvatarUpload]="true"
+    [avatarUrl]="selectedUserAvatar()"
+    [avatarColor]="selectedUserAvatarColor()"
+    [avatarInitial]="selectedUserInitial()"
+    [avatarUploading]="avatarUploading()"
     (close)="closeModals()"
+    (chooseAvatar)="openAvatarPicker()"
     (submit)="createUser()">
   </app-user-form-drawer>
 }
@@ -58,7 +64,28 @@
     [errorMessage]="formError()"
     [showPasswordFields]="true"
     [passwordRequired]="false"
+    [showAvatarUpload]="true"
+    [avatarUrl]="selectedUserAvatar()"
+    [avatarColor]="selectedUserAvatarColor()"
+    [avatarInitial]="selectedUserInitial()"
+    [avatarUploading]="avatarUploading()"
+    [userStatus]="selectedUser()?.status || ''"
+    [userLevel]="selectedUser()?.level || ''"
+    [userBranch]="selectedUser()?.branch || ''"
+    [userTeams]="selectedUser()?.roles || []"
+    [userLastLogin]="selectedUser()?.lastLogin || ''"
+    [userId]="selectedUserId()"
     (close)="closeModals()"
+    (chooseAvatar)="openAvatarPicker()"
     (submit)="updateUser()">
   </app-user-form-drawer>
 }
+
+<input #avatarInput type="file" accept="image/png,image/jpeg,image/webp" class="hidden" (change)="onAvatarSelected($event)" />
+
+<app-avatar-cropper-modal
+  [file]="avatarCropFile()"
+  [title]="'รูปโปรไฟล์: ' + (form.display_name || selectedUser()?.name || 'ผู้ใช้งาน')"
+  (close)="closeAvatarCropper()"
+  (confirm)="onAvatarCropped($event)">
+</app-avatar-cropper-modal>

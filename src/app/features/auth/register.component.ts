@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, QueryList, ViewChildren, signal } from '@angular/core';
+import { Component, ElementRef, QueryList, ViewChild, ViewChildren, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { AvatarCropperModalComponent } from '../../shared/avatar/avatar-cropper-modal.component';
 import { SwalService } from '../../shared/swal/swal.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AvatarCropperModalComponent],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css',
 })
@@ -18,11 +19,15 @@ export class RegisterComponent {
   readonly inviteIndexes = [0, 1, 2, 3, 4, 5];
 
   @ViewChildren('inviteDigit') private inviteInputRefs?: QueryList<ElementRef<HTMLInputElement>>;
+  @ViewChild('avatarInput') private avatarInput?: ElementRef<HTMLInputElement>;
   private inviteValidationSequence = 0;
 
   displayName = '';
   email = '';
   branch = '';
+  avatarPreviewUrl = signal<string | null>(null);
+  avatarCropSourceFile = signal<File | null>(null);
+  avatarFile = signal<File | null>(null);
   inviteCodeDigits: string[] = this.inviteIndexes.map(() => '');
   password = '';
   confirmPassword = '';
@@ -154,13 +159,18 @@ export class RegisterComponent {
 
     this.loading.set(true);
     try {
-      await firstValueFrom(this.api.postPublic('/auth/register', {
-        display_name,
-        email,
-        password: this.password,
-        branch: branch || undefined,
-        invite_code,
-      }));
+      const formData = new FormData();
+      formData.append('display_name', display_name);
+      formData.append('email', email);
+      formData.append('password', this.password);
+      formData.append('invite_code', invite_code);
+      if (branch) formData.append('branch', branch);
+      const avatarFile = this.avatarFile();
+      if (avatarFile) {
+        formData.append('image', avatarFile);
+      }
+
+      await firstValueFrom(this.api.postPublic('/auth/register', formData));
 
       this.swal.success('ลงทะเบียนสำเร็จ', 'กรุณาเข้าสู่ระบบด้วยบัญชีที่สร้างใหม่');
       await this.router.navigate(['/login'], { queryParams: { email } });
@@ -170,6 +180,36 @@ export class RegisterComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  openAvatarPicker() {
+    const input = this.avatarInput?.nativeElement;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }
+
+  onAvatarSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) return;
+    this.avatarCropSourceFile.set(file);
+  }
+
+  closeAvatarCropper() {
+    this.avatarCropSourceFile.set(null);
+  }
+
+  onAvatarCropped(blob: Blob) {
+    this.avatarFile.set(new File([blob], 'avatar.png', { type: blob.type || 'image/png' }));
+    this.avatarCropSourceFile.set(null);
+    this.avatarPreviewUrl.set(URL.createObjectURL(blob));
+  }
+
+  clearAvatar() {
+    this.avatarCropSourceFile.set(null);
+    this.avatarFile.set(null);
+    this.avatarPreviewUrl.set(null);
   }
 
   private onInviteCodeChanged() {
