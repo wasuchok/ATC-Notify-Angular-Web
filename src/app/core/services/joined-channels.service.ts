@@ -22,6 +22,7 @@ export type JoinedChannel = {
   } | null;
   last_message_content?: string | null;
   last_message_at?: string | null;
+  last_unread_message_at?: string | null;
   unread_count?: number;
 };
 
@@ -53,6 +54,10 @@ export class JoinedChannelsService {
   }
 
   private onRealtime(payload: RealtimePayload, activeChannelId: number | null, currentUserId: string | null) {
+    if (payload.event === 'message:deleted') {
+      void this.refresh().catch(() => null);
+      return;
+    }
     if (payload.event !== 'message:new') return;
     const data: any = payload.data || {};
     const channelId = Number(data.channel_id);
@@ -71,6 +76,7 @@ export class JoinedChannelsService {
         ...current,
         last_message_content: typeof data.content === 'string' ? data.content : current.last_message_content ?? null,
         last_message_at: data.created_at || current.last_message_at || null,
+        last_unread_message_at: isActive ? null : (data.created_at || current.last_unread_message_at || null),
         unread_count: isActive ? 0 : unread + 1,
       };
       next.sort((a, b) => this.compareChannels(a, b));
@@ -85,7 +91,15 @@ export class JoinedChannelsService {
 
     const aUnread = typeof a.unread_count === 'number' ? a.unread_count : 0;
     const bUnread = typeof b.unread_count === 'number' ? b.unread_count : 0;
-    if (aUnread !== bUnread) return bUnread - aUnread;
+    const aHasUnread = aUnread > 0;
+    const bHasUnread = bUnread > 0;
+    if (aHasUnread !== bHasUnread) return bHasUnread ? 1 : -1;
+
+    if (aHasUnread && bHasUnread) {
+      const aUnreadTime = this.toMillis(a.last_unread_message_at || null);
+      const bUnreadTime = this.toMillis(b.last_unread_message_at || null);
+      if (aUnreadTime !== bUnreadTime) return bUnreadTime - aUnreadTime;
+    }
 
     const aTime = this.toMillis(a.last_message_at || a.created_at || null);
     const bTime = this.toMillis(b.last_message_at || b.created_at || null);

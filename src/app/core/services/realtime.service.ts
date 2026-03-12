@@ -9,6 +9,7 @@ export type RealtimePayload =
   | { event: 'heartbeat'; data: any }
   | { event: 'message:new'; data: any }
   | { event: 'message:read'; data: any }
+  | { event: 'message:deleted'; data: any }
   | { event: 'error'; data: any };
 
 const SERVER_HEARTBEAT_INTERVAL_MS = 30_000;

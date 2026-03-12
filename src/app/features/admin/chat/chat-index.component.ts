@@ -1,12 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { JoinedChannelsService } from '../../../core/services/joined-channels.service';
+import { ApiService } from '../../../core/services/api.service';
+import { TokenService } from '../../../core/services/token.service';
+import { SwalService } from '../../../shared/swal/swal.service';
 
 @Component({
   selector: 'app-chat-index',
   standalone: true,
   imports: [CommonModule, RouterLink],
+  host: {
+    '(document:click)': 'closeContextMenu()',
+    '(document:keydown.escape)': 'closeContextMenu()',
+  },
   template: `
     <div class="h-full w-full flex flex-col bg-slate-50 rounded-3xl overflow-hidden">
       <div class="px-6 py-5 border-b border-slate-200">
@@ -34,6 +42,7 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <a *ngFor="let c of defaultChannels()"
                 [routerLink]="['/admin/chat', c.id]"
+                (contextmenu)="openContextMenu($event, c)"
                 class="group block rounded-2xl border border-transparent bg-white p-3 shadow-sm transition hover:border-slate-200 hover:shadow-md"
                 [class.opacity-60]="!c.is_active">
                 <div class="flex items-center gap-3">
@@ -62,6 +71,7 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <a *ngFor="let c of roleChannels()"
                 [routerLink]="['/admin/chat', c.id]"
+                (contextmenu)="openContextMenu($event, c)"
                 class="group block rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md"
                 [class.opacity-60]="!c.is_active">
                 <div class="flex items-center gap-3">
@@ -87,14 +97,88 @@ import { JoinedChannelsService } from '../../../core/services/joined-channels.se
         </ng-container>
       </div>
     </div>
+
+    @if (contextMenu()) {
+      <div
+        class="fixed z-[3200] min-w-[180px] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+        [style.left.px]="contextMenu()!.x"
+        [style.top.px]="contextMenu()!.y"
+        (click)="$event.stopPropagation()"
+        (contextmenu)="$event.preventDefault()">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+          (click)="deleteChannelFromMenu()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4h8v2m-7 4v6m4-6v6M5 6l1 14h12l1-14" />
+          </svg>
+          ลบแชท
+        </button>
+      </div>
+    }
   `,
 })
 export class ChatIndexComponent implements OnInit {
-  constructor(public readonly channelsService: JoinedChannelsService) {}
+  contextMenu = signal<{ x: number; y: number; channelId: number; channelName: string } | null>(null);
+
+  constructor(
+    public readonly channelsService: JoinedChannelsService,
+    private readonly api: ApiService,
+    private readonly tokenService: TokenService,
+    private readonly swal: SwalService
+  ) {}
 
   async ngOnInit() {
     if (this.channelsService.channels().length === 0) {
       await this.channelsService.refresh().catch(() => null);
+    }
+  }
+
+  openContextMenu(event: MouseEvent, channel: { id: number; name: string }) {
+    if (!this.tokenService.isAdmin()) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menuWidth = 180;
+    const menuHeight = 56;
+    const padding = 12;
+    const maxX = window.innerWidth - menuWidth - padding;
+    const maxY = window.innerHeight - menuHeight - padding;
+
+    this.contextMenu.set({
+      x: Math.min(event.clientX, Math.max(padding, maxX)),
+      y: Math.min(event.clientY, Math.max(padding, maxY)),
+      channelId: channel.id,
+      channelName: channel.name,
+    });
+  }
+
+  closeContextMenu() {
+    this.contextMenu.set(null);
+  }
+
+  async deleteChannelFromMenu() {
+    const menu = this.contextMenu();
+    if (!menu) return;
+
+    this.closeContextMenu();
+    const confirmed = await this.swal.fire({
+      title: 'ลบแชท',
+      text: `ต้องการลบห้อง "${menu.channelName}" ใช่หรือไม่`,
+      type: 'warning',
+      confirmText: 'ลบ',
+      cancelText: 'ยกเลิก',
+      showCancel: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await firstValueFrom(this.api.deletePrivate(`/channel/${menu.channelId}`));
+      await this.channelsService.refresh();
+      await this.swal.success('สำเร็จ', 'ลบแชทแล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถลบแชทได้';
+      await this.swal.error('ไม่สำเร็จ', message);
     }
   }
 

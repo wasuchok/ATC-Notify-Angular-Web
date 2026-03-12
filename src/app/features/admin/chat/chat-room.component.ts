@@ -8,6 +8,7 @@ import { ApiService } from '../../../core/services/api.service';
 import { JoinedChannelsService } from '../../../core/services/joined-channels.service';
 import { LoadingService } from '../../../core/services/loading.service';
 import { RealtimePayload, RealtimeService } from '../../../core/services/realtime.service';
+import { TokenService } from '../../../core/services/token.service';
 import { SwalService } from '../../../shared/swal/swal.service';
 
 type ChatMessage = {
@@ -49,6 +50,7 @@ type UserProfileResponse = {
   imports: [CommonModule, FormsModule],
   host: {
     '(document:keydown)': 'onDocumentKeydown($event)',
+    '(document:click)': 'closeMessageContextMenu()',
   },
   template: `
     <div class="h-full min-h-0 flex flex-col">
@@ -126,7 +128,8 @@ type UserProfileResponse = {
                   [class.bg-slate-900]="isMe(m)"
                   [class.border-slate-900]="isMe(m)"
                   [class.text-white]="isMe(m)"
-                  [class.ml-auto]="isMe(m)">
+                  [class.ml-auto]="isMe(m)"
+                  (contextmenu)="openMessageContextMenu($event, m)">
                   {{ m.content }}
                 </div>
               </div>
@@ -301,6 +304,25 @@ type UserProfileResponse = {
         </div>
       </div>
     }
+
+    @if (messageContextMenu()) {
+      <div
+        class="fixed z-[4300] min-w-[180px] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+        [style.left.px]="messageContextMenu()!.x"
+        [style.top.px]="messageContextMenu()!.y"
+        (click)="$event.stopPropagation()"
+        (contextmenu)="$event.preventDefault()">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+          (click)="deleteMessageFromMenu()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4h8v2m-7 4v6m4-6v6M5 6l1 14h12l1-14" />
+          </svg>
+          ลบข้อความ
+        </button>
+      </div>
+    }
   `,
 })
 export class ChatRoomComponent {
@@ -335,6 +357,7 @@ export class ChatRoomComponent {
   private scrollRaf: number | null = null;
   private initialAutoScroll = false;
   private initialAutoScrollTimer: any = null;
+  messageContextMenu = signal<{ x: number; y: number; messageId: number } | null>(null);
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -342,6 +365,7 @@ export class ChatRoomComponent {
     private readonly joinedChannels: JoinedChannelsService,
     private readonly loadingService: LoadingService,
     private readonly realtime: RealtimeService,
+    private readonly tokenService: TokenService,
     private readonly swal: SwalService
   ) {}
 
@@ -744,6 +768,57 @@ export class ChatRoomComponent {
     if (this.profileModalOpen()) {
       event.preventDefault();
       this.closeProfileModal();
+      return;
+    }
+    this.closeMessageContextMenu();
+  }
+
+  openMessageContextMenu(event: MouseEvent, message: ChatMessage) {
+    if (!this.tokenService.isAdmin()) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menuWidth = 180;
+    const menuHeight = 56;
+    const padding = 12;
+    const maxX = window.innerWidth - menuWidth - padding;
+    const maxY = window.innerHeight - menuHeight - padding;
+
+    this.messageContextMenu.set({
+      x: Math.min(event.clientX, Math.max(padding, maxX)),
+      y: Math.min(event.clientY, Math.max(padding, maxY)),
+      messageId: message.id,
+    });
+  }
+
+  closeMessageContextMenu() {
+    this.messageContextMenu.set(null);
+  }
+
+  async deleteMessageFromMenu() {
+    const menu = this.messageContextMenu();
+    if (!menu) return;
+
+    this.closeMessageContextMenu();
+    const confirmed = await this.swal.fire({
+      title: 'ลบข้อความ',
+      text: 'ต้องการลบข้อความนี้ใช่หรือไม่',
+      type: 'warning',
+      confirmText: 'ลบ',
+      cancelText: 'ยกเลิก',
+      showCancel: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await firstValueFrom(this.api.deletePrivate(`/messages/${menu.messageId}`, { withCredentials: true }));
+      this.messages.update((prev) => prev.filter((m) => m.id !== menu.messageId));
+      this.messageIds.delete(menu.messageId);
+      await this.joinedChannels.refresh().catch(() => null);
+      await this.swal.success('สำเร็จ', 'ลบข้อความแล้ว');
+    } catch (err: any) {
+      const message = err?.error?.message || 'ไม่สามารถลบข้อความได้';
+      await this.swal.error('ไม่สำเร็จ', message);
     }
   }
 
@@ -802,6 +877,16 @@ export class ChatRoomComponent {
           return { ...m, read_by: Array.from(readBy) };
         })
       );
+      return;
+    }
+
+    if (payload.event === 'message:deleted') {
+      const data: any = payload.data || {};
+      const channelId = Number(data.channel_id);
+      const messageId = Number(data.id);
+      if (channelId !== currentChannelId || !Number.isInteger(messageId)) return;
+      this.messageIds.delete(messageId);
+      this.messages.update((prev) => prev.filter((m) => m.id !== messageId));
     }
   }
 
