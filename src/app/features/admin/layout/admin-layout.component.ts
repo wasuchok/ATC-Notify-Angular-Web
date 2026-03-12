@@ -252,13 +252,8 @@ export class AdminLayoutComponent {
     this.profileName.set(payloadRole === 'admin' ? 'ผู้ดูแลระบบ' : payloadEmail ? 'ผู้ใช้งาน' : null);
 
     this.router.events.subscribe((event) => {
-      if (event instanceof NavigationStart) {
-        this.loadingService.show();
-      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError) {
-        setTimeout(() => {
-          this.loadingService.hide();
-          if (event instanceof NavigationEnd) this.updateHeaderByUrl();
-        }, 250);
+      if (event instanceof NavigationEnd) {
+        this.updateHeaderByUrl();
       }
     });
 
