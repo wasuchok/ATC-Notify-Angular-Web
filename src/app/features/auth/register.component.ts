@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { SeoService } from '../../core/services/seo.service';
 import { AvatarCropperModalComponent } from '../../shared/avatar/avatar-cropper-modal.component';
 import { SwalService } from '../../shared/swal/swal.service';
 
@@ -43,8 +44,15 @@ export class RegisterComponent {
   constructor(
     private readonly api: ApiService,
     private readonly router: Router,
+    private readonly seo: SeoService,
     private readonly swal: SwalService
-  ) {}
+  ) {
+    this.seo.setPublicPage({
+      title: 'ลงทะเบียน Anotix by Aoyama',
+      description: 'ลงทะเบียนใช้งาน Anotix by Aoyama เพื่อเข้าถึงระบบแจ้งเตือนและการสื่อสารภายในองค์กร',
+      path: '/register',
+    });
+  }
 
   get inviteCode(): string {
     return this.inviteCodeDigits.join('');

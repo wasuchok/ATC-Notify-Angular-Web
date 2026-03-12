@@ -1,8 +1,8 @@
 {
   "name": "web-notify",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "packageManager": "npm@10.9.3",
-  "generatedAt": "2026-03-12T03:16:21.166Z",
+  "generatedAt": "2026-03-12T03:50:49.275Z",
   "dependencies": {
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",

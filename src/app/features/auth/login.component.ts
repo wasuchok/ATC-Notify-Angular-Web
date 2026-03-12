@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { SeoService } from '../../core/services/seo.service';
 import { TokenService } from '../../core/services/token.service';
 import { SwalService } from '../../shared/swal/swal.service';
 
@@ -26,12 +27,18 @@ export class LoginComponent implements OnInit {
     private readonly tokenService: TokenService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
+    private readonly seo: SeoService,
     private readonly swal: SwalService
   ) { }
 
   ngOnInit(): void {
     const prefilledEmail = this.route.snapshot.queryParamMap.get('email');
     if (prefilledEmail) this.email = prefilledEmail;
+    this.seo.setPublicPage({
+      title: 'เข้าสู่ระบบ Anotix by Aoyama',
+      description: 'เข้าสู่ระบบ Anotix by Aoyama สำหรับติดตามการแจ้งเตือนและสื่อสารภายในองค์กรแบบเรียลไทม์',
+      path: '/login',
+    });
   }
 
   async onSubmit() {
