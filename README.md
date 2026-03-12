@@ -11,6 +11,7 @@ Frontend (Angular) สำหรับระบบ Notify-ATC
 <p>
   <img src="public/pic3.png" width="80%" />
   <img src="public/pic4.png" width="80%" />
+  <img src="public/pic5.png" width="80%" />
 </p>
 
 ## Quickstart
