@@ -530,7 +530,7 @@ export class Channels {
     try {
       await this.joinedChannels.refresh();
     } catch {
-      // keep main operation success even if sidebar sync fails
+     
     }
   }
 

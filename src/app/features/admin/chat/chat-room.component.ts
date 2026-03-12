@@ -620,7 +620,6 @@ export class ChatRoomComponent {
       this.nextCursor.set(res.meta?.nextCursor ?? null);
       this.hasMore.set(Boolean(res.meta?.hasMore));
 
-      // Keep the current viewport anchored when prepending.
       if (el) {
         setTimeout(() => {
           const newScrollHeight = el.scrollHeight;
@@ -646,7 +645,7 @@ export class ChatRoomComponent {
         this.api.postPrivate('/messages', { channel_id: id, content, type: 'text' }, { withCredentials: true })
       );
       this.draft = '';
-      // rely on realtime broadcast; fallback refresh if websocket disconnected
+
       if (!this.realtime.connected()) {
         await this.fetchMessages();
       }
